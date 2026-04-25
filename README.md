@@ -87,28 +87,6 @@ npm run dev
 # 打开浏览器访问 http://localhost:5173
 ```
 
-## 项目结构
-sensor-monitor/
-├── src/
-│   ├── app/
-│   │   ├── App.tsx                    # 应用入口
-│   │   ├── routes.tsx                 # 路由配置
-│   │   └── components/
-│   │       ├── MonitorView.tsx        # 主监控页面
-│   │       ├── VideoStream.tsx        # 视频流组件
-│   │       ├── SensorDisplay.tsx      # 传感器数据显示
-│   │       ├── DataEntryTable.tsx     # 数据表格与图表
-│   │       ├── ConnectionConfig.tsx   # 连接配置
-│   │       ├── SensorConfig.tsx       # 传感器配置
-│   │       ├── LoginDialog.tsx        # 登录对话框
-│   │       └── ui/                    # UI 组件库
-│   ├── styles/                        # 样式文件
-│   ├── lib/                           # 工具函数
-│   └── main.tsx                       # React 入口
-├── index.html                         # HTML 模板
-├── vite.config.ts                     # Vite 配置
-├── tsconfig.json                      # TypeScript 配置
-└── package.json                       # 项目依赖
 ## 主要特性
 ✅ 实时数据采集：支持多传感器并行监控
 ✅ 可视化分析：趋势图和占比图实时更新

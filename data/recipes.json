@@ -1,0 +1,87 @@
+{
+  "standardC": {
+    "name": "标准配方C",
+    "batchSize": 6,
+    "temperature": {
+      "min": 22,
+      "max": 28
+    },
+    "weight": {
+      "min": 120,
+      "max": 140
+    },
+    "length": {
+      "min": 98,
+      "max": 108
+    },
+    "width": {
+      "min": 48,
+      "max": 52
+    },
+    "height": {
+      "min": 28,
+      "max": 32
+    },
+    "waterCutWidth": {
+      "min": 42,
+      "max": 48
+    },
+    "enableWaterCut": false,
+    "enableBottomMeasurement": true,
+    "bottomParams": {
+      "batchSize": 3,
+      "temperature": {
+        "min": 20,
+        "max": 26
+      },
+      "weight": {
+        "min": 80,
+        "max": 100
+      },
+      "length": {
+        "min": 95,
+        "max": 105
+      },
+      "width": {
+        "min": 45,
+        "max": 50
+      },
+      "height": {
+        "min": 25,
+        "max": 30
+      },
+      "waterCutWidth": {
+        "min": 40,
+        "max": 45
+      }
+    },
+    "enableMiddleMeasurement": true,
+    "middleParams": {
+      "batchSize": 3,
+      "temperature": {
+        "min": 21,
+        "max": 27
+      },
+      "weight": {
+        "min": 100,
+        "max": 120
+      },
+      "length": {
+        "min": 96,
+        "max": 106
+      },
+      "width": {
+        "min": 46,
+        "max": 51
+      },
+      "height": {
+        "min": 26,
+        "max": 31
+      },
+      "waterCutWidth": {
+        "min": 41,
+        "max": 46
+      }
+    }
+  }
+}

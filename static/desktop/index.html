@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BreadTestingBE Desktop</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .panel {
+      text-align: center;
+      padding: 2rem 3rem;
+      border: 1px solid rgba(34, 211, 238, 0.3);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.8);
+      box-shadow: 0 0 40px rgba(34, 211, 238, 0.15);
+    }
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: 1.25rem;
+      color: #67e8f9;
+    }
+    p {
+      margin: 0;
+      font-size: 0.875rem;
+      color: #94a3b8;
+    }
+    .spinner {
+      width: 28px;
+      height: 28px;
+      margin: 1rem auto 0;
+      border: 3px solid rgba(34, 211, 238, 0.2);
+      border-top-color: #22d3ee;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>BreadTestingBE</h1>
+    <p>桌面应用启动中...</p>
+    <div class="spinner"></div>
+  </div>
+  <script>
+    // 桌面窗口固定入口：短暂展示后进入主应用
+    setTimeout(() => location.replace("/"), 600);
+  </script>
+</body>
+</html>

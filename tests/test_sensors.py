@@ -17,3 +17,12 @@ def test_get_current_weight(client: TestClient) -> None:
     assert isinstance(data["value"], float)
     assert 0 <= data["value"] <= 100
     assert data["connected"] is True
+
+
+def test_get_current_height(client: TestClient) -> None:
+    response = client.get("/api/v1/sensors/height")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data["value"], float)
+    assert 0 <= data["value"] <= 100
+    assert data["connected"] is True

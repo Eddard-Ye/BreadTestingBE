@@ -89,6 +89,46 @@ def test_list_measurements_pagination(client: TestClient) -> None:
     assert len(page2.json()["records"]) == 2
 
 
+def test_list_measurements_time_filter(client: TestClient) -> None:
+    recipe_id = _create_test_recipe(client)
+    batch = {
+        "records": [
+            {
+                **_sample_measurement(recipe_id, slot_index=0),
+                "recordedAt": "2026-06-22T16:32:56",
+            }
+        ]
+    }
+    create = client.post("/api/v1/measurements/batch", json=batch)
+    assert create.status_code == 201
+
+    # 本地墙钟范围筛选（与 UI datetime-local 一致，不做 UTC 转换）
+    filtered = client.get(
+        "/api/v1/measurements",
+        params={
+            "recipeId": recipe_id,
+            "recordType": "product",
+            "startTime": "2026-06-22T16:10:00",
+            "endTime": "2026-06-22T18:10:59",
+        },
+    )
+    assert filtered.status_code == 200
+    assert filtered.json()["total"] == 1
+
+    # 旧版前端若发送 UTC ISO，后端也应能正确匹配本地录入时间
+    filtered_utc = client.get(
+        "/api/v1/measurements",
+        params={
+            "recipeId": recipe_id,
+            "recordType": "product",
+            "startTime": "2026-06-22T08:10:00.000Z",
+            "endTime": "2026-06-22T10:10:59.000Z",
+        },
+    )
+    assert filtered_utc.status_code == 200
+    assert filtered_utc.json()["total"] == 1
+
+
 def test_create_batch_unknown_recipe(client: TestClient) -> None:
     batch = {"records": [_sample_measurement("missing")]}
     response = client.post("/api/v1/measurements/batch", json=batch)

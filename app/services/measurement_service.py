@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -11,10 +12,19 @@ from app.models.measurement import MeasurementRecord
 from app.models.recipe import Recipe
 from app.schemas.measurement import MeasurementCreate, MeasurementResponse
 
+LOCAL_TZ = ZoneInfo("Asia/Shanghai")
+
 
 class MeasurementService:
     def __init__(self, db: Session) -> None:
         self.db = db
+
+    @staticmethod
+    def _to_local_naive(dt: datetime) -> datetime:
+        """统一为本地墙钟 naive 时间，便于与数据库中的录入时间比较。"""
+        if dt.tzinfo is None:
+            return dt
+        return dt.astimezone(LOCAL_TZ).replace(tzinfo=None)
 
     def _apply_filters(
         self,
@@ -30,9 +40,13 @@ class MeasurementService:
         if record_type is not None:
             query = query.where(MeasurementRecord.record_type == record_type)
         if start_time is not None:
-            query = query.where(MeasurementRecord.recorded_at >= start_time)
+            query = query.where(
+                MeasurementRecord.recorded_at >= self._to_local_naive(start_time)
+            )
         if end_time is not None:
-            query = query.where(MeasurementRecord.recorded_at <= end_time)
+            query = query.where(
+                MeasurementRecord.recorded_at <= self._to_local_naive(end_time)
+            )
         return query
 
     def list_records(
@@ -83,9 +97,8 @@ class MeasurementService:
 
         saved_rows: list[MeasurementRecord] = []
         for payload in records:
-            recorded_at = payload.recorded_at or datetime.now(timezone.utc)
-            if recorded_at.tzinfo is None:
-                recorded_at = recorded_at.replace(tzinfo=timezone.utc)
+            recorded_at = payload.recorded_at or datetime.now(LOCAL_TZ)
+            recorded_at = self._to_local_naive(recorded_at)
 
             row = MeasurementRecord(
                 id=str(uuid.uuid4()),

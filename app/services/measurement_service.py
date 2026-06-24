@@ -34,11 +34,15 @@ class MeasurementService:
         record_type: str | None,
         start_time: datetime | None,
         end_time: datetime | None,
+        has_preview: bool | None = None,
     ):
         if recipe_id is not None:
             query = query.where(MeasurementRecord.recipe_id == recipe_id)
         if record_type is not None:
             query = query.where(MeasurementRecord.record_type == record_type)
+        if has_preview:
+            query = query.where(MeasurementRecord.preview_name.isnot(None))
+            query = query.where(MeasurementRecord.preview_name != "")
         if start_time is not None:
             query = query.where(
                 MeasurementRecord.recorded_at >= self._to_local_naive(start_time)
@@ -58,6 +62,7 @@ class MeasurementService:
         end_time: datetime | None = None,
         page: int = 1,
         page_size: int = 10,
+        has_preview: bool | None = None,
     ) -> tuple[list[MeasurementResponse], int]:
         if page < 1:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="页码必须大于 0")
@@ -69,6 +74,7 @@ class MeasurementService:
             "record_type": record_type,
             "start_time": start_time,
             "end_time": end_time,
+            "has_preview": has_preview,
         }
 
         count_query = select(func.count()).select_from(MeasurementRecord)
@@ -112,6 +118,7 @@ class MeasurementService:
                 width=payload.width,
                 height=payload.height,
                 water_cut_width=payload.water_cut_width,
+                preview_name=payload.preview_name,
                 recorded_at=recorded_at,
             )
             self.db.add(row)
@@ -136,6 +143,7 @@ class MeasurementService:
             width=row.width,
             height=row.height,
             water_cut_width=row.water_cut_width,
+            preview_name=row.preview_name,
             recorded_at=row.recorded_at,
         )
 

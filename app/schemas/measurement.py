@@ -20,6 +20,7 @@ class MeasurementBase(BaseModel):
     width: str
     height: str
     water_cut_width: str
+    preview_name: str | None = None
     recorded_at: datetime | None = None
 
 

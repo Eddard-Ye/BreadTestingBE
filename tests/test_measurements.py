@@ -129,6 +129,42 @@ def test_list_measurements_time_filter(client: TestClient) -> None:
     assert filtered_utc.json()["total"] == 1
 
 
+def test_list_measurements_has_preview_filter(client: TestClient) -> None:
+    recipe_id = _create_test_recipe(client)
+    batch = {
+        "records": [
+            {
+                **_sample_measurement(recipe_id, slot_index=0),
+                "previewName": "bread1.jpg",
+            },
+            _sample_measurement(recipe_id, slot_index=1),
+        ]
+    }
+    client.post("/api/v1/measurements/batch", json=batch)
+
+    filtered = client.get("/api/v1/measurements", params={"hasPreview": True})
+    assert filtered.status_code == 200
+    data = filtered.json()
+    assert data["total"] == 1
+    assert data["records"][0]["previewName"] == "bread1.jpg"
+
+
+def test_create_batch_persists_preview_name(client: TestClient) -> None:
+    recipe_id = _create_test_recipe(client)
+    batch = {
+        "records": [
+            {
+                **_sample_measurement(recipe_id, slot_index=0),
+                "previewName": "bread1_20260625_003728.jpg",
+            }
+        ]
+    }
+    create = client.post("/api/v1/measurements/batch", json=batch)
+    assert create.status_code == 201
+    created = create.json()
+    assert created[0]["previewName"] == "bread1_20260625_003728.jpg"
+
+
 def test_create_batch_unknown_recipe(client: TestClient) -> None:
     batch = {"records": [_sample_measurement("missing")]}
     response = client.post("/api/v1/measurements/batch", json=batch)

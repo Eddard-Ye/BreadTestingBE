@@ -62,7 +62,31 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
+    from sqlalchemy import inspect, text
+
     from app.models.measurement import MeasurementRecord  # noqa: F401
     from app.models.recipe import Recipe  # noqa: F401
 
-    Base.metadata.create_all(bind=get_engine())
+    engine = get_engine()
+    Base.metadata.create_all(bind=engine)
+
+    inspector = inspect(engine)
+    if "measurement_records" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("measurement_records")}
+    if "preview_name" in columns:
+        return
+
+    with engine.begin() as connection:
+        if engine.dialect.name == "mysql":
+            connection.execute(
+                text(
+                    "ALTER TABLE measurement_records "
+                    "ADD COLUMN preview_name VARCHAR(255) NULL"
+                )
+            )
+        else:
+            connection.execute(
+                text("ALTER TABLE measurement_records ADD COLUMN preview_name VARCHAR(255)")
+            )

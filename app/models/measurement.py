@@ -28,6 +28,7 @@ class MeasurementRecord(Base):
     width: Mapped[str] = mapped_column(String(32), nullable=False)
     height: Mapped[str] = mapped_column(String(32), nullable=False)
     water_cut_width: Mapped[str] = mapped_column(String(32), nullable=False)
+    preview_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

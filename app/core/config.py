@@ -24,6 +24,11 @@ class Settings(BaseSettings):
 
     SENSOR_CONFIG_PATH: str = "data/sensor_config.json"
 
+    # capture_2d_stream 视觉采集服务，需与前端 VideoStream 视频源同 host/port
+    STREAM_CAPTURE_HOST: str = "192.168.1.28"
+    STREAM_CAPTURE_PORT: int = 8080
+    STREAM_CAPTURE_TIMEOUT_SECONDS: float = 120.0
+
     @property
     def database_url(self) -> str:
         return self.DATABASE_URL
@@ -37,7 +42,7 @@ class Settings(BaseSettings):
     DESKTOP_HOST: str = "127.0.0.1"
     DESKTOP_PORT: int = 8000
     DESKTOP_INIT_URL: str = "http://127.0.0.1:8000/static/desktop/index.html"
-    DESKTOP_TITLE: str = ""
+    DESKTOP_TITLE: str = "鹰眼面包检测系统"
     DESKTOP_WIDTH: int = 1280
     DESKTOP_HEIGHT: int = 800
     DESKTOP_MIN_WIDTH: int = 1024

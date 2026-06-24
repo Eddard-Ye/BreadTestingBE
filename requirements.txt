@@ -5,6 +5,7 @@ python-dotenv>=1.0.0
 PyJWT>=2.10.0
 SQLAlchemy>=2.0.36
 pymysql>=1.1.1
+pyserial>=3.5
 pywebview>=5.4
 
 # dev / test

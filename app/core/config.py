@@ -22,6 +22,8 @@ class Settings(BaseSettings):
         "mysql+pymysql://bread:bread123@127.0.0.1:3306/bread_testing?charset=utf8mb4"
     )
 
+    SENSOR_CONFIG_PATH: str = "data/sensor_config.json"
+
     @property
     def database_url(self) -> str:
         return self.DATABASE_URL

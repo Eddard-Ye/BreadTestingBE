@@ -17,6 +17,13 @@ def client():
 
 
 @pytest.fixture(autouse=True)
+def isolated_sensor_config(tmp_path, monkeypatch):
+    config_file = tmp_path / "sensor_config.json"
+    monkeypatch.setenv("SENSOR_CONFIG_PATH", str(config_file))
+    yield config_file
+
+
+@pytest.fixture(autouse=True)
 def reset_database():
     from app.core.config import get_settings
     from app.db.session import reset_database_runtime

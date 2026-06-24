@@ -16,3 +16,10 @@ build/
 .DS_Store
 uploads/
 data/mysql/
+data/sensor_config.json
+
+# AI / patch exploration artifacts
+_*.txt
+scripts/_*.txt
+scripts/_*.py
+!requirements.txt

@@ -21,6 +21,7 @@ async def list_measurements(
     record_type: Annotated[str | None, Query(alias="recordType")] = None,
     start_time: Annotated[datetime | None, Query(alias="startTime")] = None,
     end_time: Annotated[datetime | None, Query(alias="endTime")] = None,
+    has_preview: Annotated[bool | None, Query(alias="hasPreview")] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(alias="pageSize", ge=1, le=500)] = 10,
 ) -> MeasurementListResponse:
@@ -30,6 +31,7 @@ async def list_measurements(
         record_type=record_type,
         start_time=start_time,
         end_time=end_time,
+        has_preview=has_preview,
         page=page,
         page_size=page_size,
     )

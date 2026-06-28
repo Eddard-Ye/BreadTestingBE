@@ -23,8 +23,9 @@ class Settings(BaseSettings):
     )
 
     SENSOR_CONFIG_PATH: str = "data/sensor_config.json"
+    STREAM_CAPTURE_CONFIG_PATH: str = "data/stream_capture_config.json"
 
-    # capture_2d_stream 视觉采集服务，需与前端 VideoStream 视频源同 host/port
+    # capture_2d_stream 默认值；首次运行会写入 STREAM_CAPTURE_CONFIG_PATH
     STREAM_CAPTURE_HOST: str = "10.172.158.124"
     STREAM_CAPTURE_PORT: int = 8080
     STREAM_CAPTURE_TIMEOUT_SECONDS: float = 120.0

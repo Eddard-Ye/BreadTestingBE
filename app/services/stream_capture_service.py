@@ -6,14 +6,14 @@ from urllib.parse import quote
 import httpx
 from fastapi import HTTPException, status
 
-from app.core.config import get_settings
 from app.schemas.capture import CaptureMeasurementResponse
 from app.services.sensor_service import read_height, read_temperature, read_weight
+from app.services.stream_capture_config_service import get_stream_capture_config_service
 
 
 def _stream_base_url() -> str:
-    settings = get_settings()
-    return f"http://{settings.STREAM_CAPTURE_HOST}:{settings.STREAM_CAPTURE_PORT}"
+    config = get_stream_capture_config_service().get_config()
+    return f"http://{config.host}:{config.port}"
 
 
 def build_capture_preview_path(file_name: str) -> str:
@@ -83,7 +83,7 @@ def capture_measurement(*, name: str, water_cut: bool) -> CaptureMeasurementResp
     weight_text = _format_sensor_text(weight_reading.value, unit="g", precision=2)
     height_text = _format_sensor_text(height_reading.value, unit="mm", precision=1)
 
-    settings = get_settings()
+    stream_config = get_stream_capture_config_service().get_config()
     capture_url = f"{_stream_base_url()}/capture"
     payload = {
         "name": name.strip(),
@@ -94,7 +94,7 @@ def capture_measurement(*, name: str, water_cut: bool) -> CaptureMeasurementResp
     }
 
     try:
-        with httpx.Client(timeout=settings.STREAM_CAPTURE_TIMEOUT_SECONDS) as client:
+        with httpx.Client(timeout=stream_config.timeout_seconds) as client:
             response = client.post(capture_url, json=payload)
             response.raise_for_status()
             body = response.json() if response.content else {"ok": True}

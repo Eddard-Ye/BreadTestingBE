@@ -2,9 +2,28 @@ from fastapi import APIRouter
 from fastapi.responses import Response
 
 from app.schemas.capture import CaptureMeasurementRequest, CaptureMeasurementResponse
+from app.schemas.stream_capture_config import (
+    StreamCaptureConfigResponse,
+    StreamCaptureConfigUpdate,
+)
+from app.services.stream_capture_config_service import get_stream_capture_config_service
 from app.services.stream_capture_service import capture_measurement, fetch_capture_preview
 
 router = APIRouter()
+
+
+@router.get("/config", response_model=StreamCaptureConfigResponse)
+async def get_stream_capture_config() -> StreamCaptureConfigResponse:
+    """获取视觉采集服务地址（视频流、录入抓拍、水切计算共用）。"""
+    return get_stream_capture_config_service().get_config()
+
+
+@router.put("/config", response_model=StreamCaptureConfigResponse)
+async def update_stream_capture_config(
+    payload: StreamCaptureConfigUpdate,
+) -> StreamCaptureConfigResponse:
+    """保存视觉采集服务地址到本地配置文件。"""
+    return get_stream_capture_config_service().save_config(payload)
 
 
 @router.post("/measurement", response_model=CaptureMeasurementResponse)

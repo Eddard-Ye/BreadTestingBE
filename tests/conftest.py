@@ -17,6 +17,13 @@ def client():
 
 
 @pytest.fixture(autouse=True)
+def isolated_stream_capture_config(tmp_path, monkeypatch):
+    config_file = tmp_path / "stream_capture_config.json"
+    monkeypatch.setenv("STREAM_CAPTURE_CONFIG_PATH", str(config_file))
+    yield config_file
+
+
+@pytest.fixture(autouse=True)
 def isolated_sensor_config(tmp_path, monkeypatch):
     config_file = tmp_path / "sensor_config.json"
     monkeypatch.setenv("SENSOR_CONFIG_PATH", str(config_file))

@@ -17,6 +17,7 @@ build/
 uploads/
 data/mysql/
 data/sensor_config.json
+data/stream_capture_config.json
 
 # AI / patch exploration artifacts
 _*.txt

@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     DESKTOP_MIN_WIDTH: int = 1024
     DESKTOP_MIN_HEIGHT: int = 640
     DESKTOP_RESIZABLE: bool = False
+    DESKTOP_MAXIMIZED: bool = True
+    DESKTOP_FULLSCREEN: bool = False
     DESKTOP_GUI: str | None = None
     DESKTOP_FRAMELESS: bool = True
     DESKTOP_EASY_DRAG: bool = True

@@ -83,6 +83,8 @@ def launch_desktop() -> None:
         frameless=settings.DESKTOP_FRAMELESS,
         easy_drag=settings.DESKTOP_EASY_DRAG,
         background_color=settings.DESKTOP_BACKGROUND_COLOR,
+        maximized=settings.DESKTOP_MAXIMIZED,
+        fullscreen=settings.DESKTOP_FULLSCREEN,
     )
 
     if settings.DESKTOP_DISABLE_TOUCH_SCROLL:

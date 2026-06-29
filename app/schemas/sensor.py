@@ -27,7 +27,6 @@ class SensorConfigResponse(BaseModel):
 
     temperature: SerialPortConfig
     weight: SerialPortConfig
-    height: SerialPortConfig
 
 
 class SensorConfigUpdate(BaseModel):
@@ -35,7 +34,6 @@ class SensorConfigUpdate(BaseModel):
 
     temperature: SerialPortConfig
     weight: SerialPortConfig
-    height: SerialPortConfig
 
 
 class SerialPortsResponse(BaseModel):

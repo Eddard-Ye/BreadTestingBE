@@ -4,58 +4,60 @@
   }
   window.__breadDesktopScrollLock = true;
 
-  const style = document.createElement("style");
-  style.textContent = `
-    html, body, #root {
-      overflow: hidden !important;
-      overscroll-behavior: none !important;
-      touch-action: none !important;
-    }
-  `;
+  var style = document.createElement("style");
+  style.textContent =
+    "html, body, #root {" +
+    "overflow: hidden !important;" +
+    "overscroll-behavior: none !important;" +
+    "touch-action: none !important;" +
+    "}";
   (document.head || document.documentElement).appendChild(style);
 
-  const blockScroll = (event) => {
+  function blockScroll(event) {
     event.preventDefault();
-  };
+  }
 
-  const listenerOptions = { passive: false, capture: true };
+  function blockMultiTouch(event) {
+    if (event.touches && event.touches.length > 1) {
+      event.preventDefault();
+    }
+  }
 
-  window.addEventListener("wheel", blockScroll, listenerOptions);
-  window.addEventListener("touchmove", blockScroll, listenerOptions);
-  window.addEventListener("scroll", blockScroll, listenerOptions);
+  function blockScrollKeys(event) {
+    var key = event.key || event.keyCode;
+    if (
+      key === "ArrowUp" ||
+      key === "ArrowDown" ||
+      key === "ArrowLeft" ||
+      key === "ArrowRight" ||
+      key === "PageUp" ||
+      key === "PageDown" ||
+      key === "Home" ||
+      key === "End" ||
+      key === " " ||
+      key === 32 ||
+      key === 33 ||
+      key === 34 ||
+      key === 35 ||
+      key === 36 ||
+      key === 37 ||
+      key === 38 ||
+      key === 39 ||
+      key === 40
+    ) {
+      event.preventDefault();
+    }
+  }
 
-  window.addEventListener(
-    "touchstart",
-    (event) => {
-      if (event.touches.length > 1) {
-        event.preventDefault();
-      }
-    },
-    listenerOptions,
-  );
+  var capture = true;
+  window.addEventListener("wheel", blockScroll, capture);
+  window.addEventListener("touchmove", blockScroll, capture);
+  window.addEventListener("scroll", blockScroll, capture);
+  window.addEventListener("touchstart", blockMultiTouch, capture);
+  window.addEventListener("keydown", blockScrollKeys, capture);
 
-  ["gesturestart", "gesturechange", "gestureend"].forEach((eventName) => {
-    window.addEventListener(eventName, blockScroll, listenerOptions);
-  });
-
-  window.addEventListener(
-    "keydown",
-    (event) => {
-      const scrollKeys = new Set([
-        "ArrowUp",
-        "ArrowDown",
-        "ArrowLeft",
-        "ArrowRight",
-        "PageUp",
-        "PageDown",
-        "Home",
-        "End",
-        " ",
-      ]);
-      if (scrollKeys.has(event.key)) {
-        event.preventDefault();
-      }
-    },
-    listenerOptions,
-  );
+  var gestureEvents = ["gesturestart", "gesturechange", "gestureend"];
+  for (var i = 0; i < gestureEvents.length; i += 1) {
+    window.addEventListener(gestureEvents[i], blockScroll, capture);
+  }
 })();

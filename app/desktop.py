@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import sys
 import threading
 import time
 from pathlib import Path
@@ -10,6 +12,8 @@ import uvicorn
 import webview
 
 from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 SCROLL_LOCK_JS = (Path(__file__).with_name("desktop_scroll_lock.js")).read_text(encoding="utf-8")
 
@@ -40,7 +44,19 @@ def _wait_for_server(url: str, timeout: float = 15.0) -> None:
 
 
 def _install_touch_scroll_lock(window: webview.Window) -> None:
-    window.evaluate_js(SCROLL_LOCK_JS)
+    try:
+        window.evaluate_js(SCROLL_LOCK_JS)
+    except Exception:
+        logger.warning("桌面滚动锁定脚本注入失败，已跳过", exc_info=True)
+
+
+def _resolve_gui(gui: str | None) -> str | None:
+    if gui:
+        return gui
+    if sys.platform == "win32":
+        # Windows 默认必须用 Edge Chromium；MSHTML 无法运行现代前端且不支持 ES6 脚本
+        return "edgechromium"
+    return None
 
 
 def launch_desktop() -> None:
@@ -72,8 +88,9 @@ def launch_desktop() -> None:
     if settings.DESKTOP_DISABLE_TOUCH_SCROLL:
         window.events.loaded += _install_touch_scroll_lock
 
-    if settings.DESKTOP_GUI:
-        webview.start(gui=settings.DESKTOP_GUI)
+    gui = _resolve_gui(settings.DESKTOP_GUI)
+    if gui:
+        webview.start(gui=gui)
     else:
         webview.start()
 

@@ -14,13 +14,5 @@
     "stopBits": "1",
     "parity": "None",
     "enableMock": true
-  },
-  "height": {
-    "port": "COM6",
-    "baudRate": "115200",
-    "dataBits": "8",
-    "stopBits": "1",
-    "parity": "None",
-    "enableMock": true
   }
 }

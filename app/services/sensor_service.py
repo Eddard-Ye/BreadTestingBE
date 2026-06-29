@@ -10,7 +10,6 @@ from app.services.sensor_config_service import get_sensor_config_service
 _HW_DEFAULTS = {
     "temperature": {"slave_id": 1, "timeout": 1.0, "retries": 2},
     "weight": {"slave_id": 1, "timeout": 2.0, "retries": 2},
-    "height": {"slave_id": 1, "timeout": 1.0, "retries": 2},
 }
 
 _KG_TO_G = 1000.0
@@ -18,7 +17,6 @@ _KG_TO_G = 1000.0
 _locks = {
     "temperature": threading.Lock(),
     "weight": threading.Lock(),
-    "height": threading.Lock(),
 }
 _sessions: dict[str, "_HwSession"] = {}
 
@@ -226,43 +224,6 @@ def _zero_weight_hw(config: SerialPortConfig) -> SensorReading:
     return _with_weight_session(config, zero_and_read, precision=1)
 
 
-def _with_height_session(
-    config: SerialPortConfig,
-    operation: Callable[[Any], float],
-    precision: int = 1,
-) -> SensorReading:
-    from app.services.ld_bg_laser_distance import LaserDistanceSensor
-
-    params = _hw_params(config, "height")
-
-    def factory() -> LaserDistanceSensor:
-        return LaserDistanceSensor(
-            port=params["port"],
-            baudrate=params["baudrate"],
-            slave_id=params["slave_id"],
-            timeout=params["timeout"],
-            retries=params["retries"],
-        )
-
-    return _with_hw_session("height", config, factory, operation, precision)
-
-
-def _read_height_hw(config: SerialPortConfig) -> SensorReading:
-    return _with_height_session(
-        config,
-        lambda sensor: sensor.read_actual_mm(),
-        precision=1,
-    )
-
-
-def _calibrate_height_hw(config: SerialPortConfig) -> SensorReading:
-    def calibrate_and_read(sensor: Any) -> float:
-        sensor.calibrate()
-        return sensor.read_actual_mm()
-
-    return _with_height_session(config, calibrate_and_read, precision=1)
-
-
 def read_temperature() -> SensorReading:
     """读取当前温度及串口连接状态。"""
     config = get_sensor_config_service().get_config().temperature
@@ -293,19 +254,3 @@ def zero_weight() -> SensorReading:
     if config.enable_mock:
         return SensorReading(value=0.0, connected=True)
     return _zero_weight_hw(config)
-
-
-def read_height() -> SensorReading:
-    """读取当前高度及串口连接状态。"""
-    config = get_sensor_config_service().get_config().height
-    if config.enable_mock:
-        return _mock_reading(precision=1)
-    return _read_height_hw(config)
-
-
-def calibrate_height() -> SensorReading:
-    """对高度传感器执行校准，并返回校准后的读数（毫米）。"""
-    config = get_sensor_config_service().get_config().height
-    if config.enable_mock:
-        return SensorReading(value=0.0, connected=True)
-    return _calibrate_height_hw(config)

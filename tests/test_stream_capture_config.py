@@ -50,10 +50,6 @@ def test_capture_measurement_uses_saved_stream_config(
         "app.services.stream_capture_service.read_weight",
         lambda: MagicMock(value=12.3, connected=True),
     )
-    monkeypatch.setattr(
-        "app.services.stream_capture_service.read_height",
-        lambda: MagicMock(value=30.0, connected=True),
-    )
 
     captured_url: dict[str, str] = {}
 

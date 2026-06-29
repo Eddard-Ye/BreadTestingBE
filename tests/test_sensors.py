@@ -23,15 +23,6 @@ def test_get_current_weight(client: TestClient) -> None:
     assert data["connected"] is True
 
 
-def test_get_current_height(client: TestClient) -> None:
-    response = client.get("/api/v1/sensors/height")
-    assert response.status_code == 200
-    data = response.json()
-    assert isinstance(data["value"], float)
-    assert 0 <= data["value"] <= 100
-    assert data["connected"] is True
-
-
 def test_get_sensor_config_creates_defaults(client: TestClient, isolated_sensor_config) -> None:
     response = client.get("/api/v1/sensors/config")
     assert response.status_code == 200
@@ -39,8 +30,8 @@ def test_get_sensor_config_creates_defaults(client: TestClient, isolated_sensor_
     assert data["temperature"]["enableMock"] is True
     assert data["temperature"]["baudRate"] == "9600"
     assert data["weight"]["baudRate"] == "38400"
-    assert data["height"]["baudRate"] == "115200"
     assert data["temperature"]["dataBits"] == "8"
+    assert "height" not in data
     assert isolated_sensor_config.exists()
 
 
@@ -61,14 +52,6 @@ def test_update_sensor_config_requires_auth(client: TestClient) -> None:
             "stopBits": "1",
             "parity": "None",
             "enableMock": True,
-        },
-        "height": {
-            "port": "COM5",
-            "baudRate": "115200",
-            "dataBits": "8",
-            "stopBits": "1",
-            "parity": "None",
-            "enableMock": False,
         },
     }
     response = client.put("/api/v1/sensors/config", json=payload)
@@ -93,14 +76,6 @@ def test_update_sensor_config_persists_to_file(client: TestClient, isolated_sens
             "parity": "None",
             "enableMock": True,
         },
-        "height": {
-            "port": "COM5",
-            "baudRate": "115200",
-            "dataBits": "8",
-            "stopBits": "1",
-            "parity": "None",
-            "enableMock": False,
-        },
     }
     headers = _auth_headers(client)
     response = client.put("/api/v1/sensors/config", json=payload, headers=headers)
@@ -112,7 +87,7 @@ def test_update_sensor_config_persists_to_file(client: TestClient, isolated_sens
 
     saved = json.loads(isolated_sensor_config.read_text(encoding="utf-8"))
     assert saved["temperature"]["enableMock"] is False
-    assert saved["height"]["port"] == "COM5"
+    assert "height" not in saved
 
     reload_response = client.get("/api/v1/sensors/config")
     assert reload_response.json()["temperature"]["port"] == "COM3"
@@ -136,14 +111,6 @@ def test_read_temperature_uses_hardware_when_mock_disabled(
         "weight": {
             "port": "COM4",
             "baudRate": "38400",
-            "dataBits": "8",
-            "stopBits": "1",
-            "parity": "None",
-            "enableMock": True,
-        },
-        "height": {
-            "port": "COM5",
-            "baudRate": "115200",
             "dataBits": "8",
             "stopBits": "1",
             "parity": "None",
@@ -570,125 +537,6 @@ def test_zero_weight_hw_calls_sensor_zero(monkeypatch) -> None:
 
 def test_post_weight_zero_mock(client: TestClient) -> None:
     response = client.post("/api/v1/sensors/weight/zero")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["value"] == 0.0
-    assert data["connected"] is True
-
-
-def test_height_session_reuses_open_connection(monkeypatch) -> None:
-    import sys
-    from types import ModuleType
-
-    from app.services import sensor_service
-    from app.schemas.sensor import SerialPortConfig
-
-    sensor_service.invalidate_sensor_sessions()
-
-    open_calls = 0
-    read_calls = 0
-
-    class FakeHeightSensor:
-        def __init__(self, **_kwargs) -> None:
-            self._ser = type("Ser", (), {"is_open": True})()
-
-        def open(self) -> None:
-            nonlocal open_calls
-            open_calls += 1
-
-        def close(self) -> None:
-            pass
-
-        def read_actual_mm(self) -> float:
-            nonlocal read_calls
-            read_calls += 1
-            return 12.3
-
-    fake_module = ModuleType("app.services.ld_bg_laser_distance")
-    fake_module.LaserDistanceSensor = FakeHeightSensor
-    monkeypatch.setitem(sys.modules, "app.services.ld_bg_laser_distance", fake_module)
-    monkeypatch.setattr(
-        "app.services.sensor_service._serial_available",
-        lambda: True,
-    )
-
-    config = SerialPortConfig(
-        port="COM5",
-        baud_rate="115200",
-        data_bits="8",
-        stop_bits="1",
-        parity="None",
-        enable_mock=False,
-    )
-
-    first = sensor_service._read_height_hw(config)
-    second = sensor_service._read_height_hw(config)
-
-    assert first == sensor_service.SensorReading(value=12.3, connected=True)
-    assert second == sensor_service.SensorReading(value=12.3, connected=True)
-    assert open_calls == 1
-    assert read_calls == 2
-
-    sensor_service.invalidate_sensor_sessions()
-
-
-def test_calibrate_height_hw_calls_sensor_calibrate(monkeypatch) -> None:
-    import sys
-    from types import ModuleType
-
-    from app.services import sensor_service
-    from app.schemas.sensor import SerialPortConfig
-
-    sensor_service.invalidate_sensor_sessions()
-    calibrate_calls = 0
-
-    class FakeHeightSensor:
-        def __init__(self, **_kwargs) -> None:
-            self._ser = type("Ser", (), {"is_open": True})()
-            self._actual = 5.0
-
-        def open(self) -> None:
-            pass
-
-        def close(self) -> None:
-            pass
-
-        def calibrate(self) -> float:
-            nonlocal calibrate_calls
-            calibrate_calls += 1
-            self._actual = 0.0
-            return 100.0
-
-        def read_actual_mm(self) -> float:
-            return self._actual
-
-    fake_module = ModuleType("app.services.ld_bg_laser_distance")
-    fake_module.LaserDistanceSensor = FakeHeightSensor
-    monkeypatch.setitem(sys.modules, "app.services.ld_bg_laser_distance", fake_module)
-    monkeypatch.setattr(
-        "app.services.sensor_service._serial_available",
-        lambda: True,
-    )
-
-    config = SerialPortConfig(
-        port="COM5",
-        baud_rate="115200",
-        data_bits="8",
-        stop_bits="1",
-        parity="None",
-        enable_mock=False,
-    )
-
-    reading = sensor_service._calibrate_height_hw(config)
-
-    assert calibrate_calls == 1
-    assert reading == sensor_service.SensorReading(value=0.0, connected=True)
-
-    sensor_service.invalidate_sensor_sessions()
-
-
-def test_post_height_calibrate_mock(client: TestClient) -> None:
-    response = client.post("/api/v1/sensors/height/calibrate")
     assert response.status_code == 200
     data = response.json()
     assert data["value"] == 0.0

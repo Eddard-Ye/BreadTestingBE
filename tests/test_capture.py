@@ -12,10 +12,6 @@ def test_capture_measurement_success(client: TestClient, monkeypatch) -> None:
         "app.services.stream_capture_service.read_weight",
         lambda: MagicMock(value=90.57, connected=True),
     )
-    monkeypatch.setattr(
-        "app.services.stream_capture_service.read_height",
-        lambda: MagicMock(value=27.2, connected=True),
-    )
 
     class FakeResponse:
         content = (
@@ -51,7 +47,7 @@ def test_capture_measurement_success(client: TestClient, monkeypatch) -> None:
             assert url.endswith("/capture")
             assert json == {
                 "name": "测试配方-成品-1",
-                "height": "27.2mm",
+                "height": "0.0mm",
                 "temperature": "61.7",
                 "weight": "90.57g",
                 "water_cut": True,
@@ -68,7 +64,7 @@ def test_capture_measurement_success(client: TestClient, monkeypatch) -> None:
     data = response.json()
     assert data["temperature"] == "61.7"
     assert data["weight"] == "90.57"
-    assert data["height"] == "27.2"
+    assert data["height"] == "0.0"
     assert data["length"] == "101.9"
     assert data["width"] == "51.2"
     assert data["waterCutMm"] == "42.5"
@@ -84,10 +80,6 @@ def test_capture_measurement_water_cut_disabled(client: TestClient, monkeypatch)
     monkeypatch.setattr(
         "app.services.stream_capture_service.read_weight",
         lambda: MagicMock(value=12.3, connected=True),
-    )
-    monkeypatch.setattr(
-        "app.services.stream_capture_service.read_height",
-        lambda: MagicMock(value=30.0, connected=True),
     )
 
     captured_payload: dict = {}

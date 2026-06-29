@@ -7,7 +7,7 @@ import httpx
 from fastapi import HTTPException, status
 
 from app.schemas.capture import CaptureMeasurementResponse
-from app.services.sensor_service import read_height, read_temperature, read_weight
+from app.services.sensor_service import read_temperature, read_weight
 from app.services.stream_capture_config_service import get_stream_capture_config_service
 
 
@@ -77,11 +77,10 @@ def capture_measurement(*, name: str, water_cut: bool) -> CaptureMeasurementResp
     """读取传感器并调用 capture_2d_stream 的 POST /capture 接口。"""
     temperature_reading = read_temperature()
     weight_reading = read_weight()
-    height_reading = read_height()
 
     temperature_text = _format_sensor_text(temperature_reading.value, precision=1)
     weight_text = _format_sensor_text(weight_reading.value, unit="g", precision=2)
-    height_text = _format_sensor_text(height_reading.value, unit="mm", precision=1)
+    height_text = "0.0mm"
 
     stream_config = get_stream_capture_config_service().get_config()
     capture_url = f"{_stream_base_url()}/capture"
@@ -145,7 +144,7 @@ def capture_measurement(*, name: str, water_cut: bool) -> CaptureMeasurementResp
         ok=True,
         temperature=f"{temperature_reading.value:.1f}",
         weight=f"{weight_reading.value:.2f}",
-        height=f"{height_reading.value:.1f}",
+        height="0.0",
         length=length,
         width=width,
         water_cut_mm=water_cut_mm,

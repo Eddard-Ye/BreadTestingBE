@@ -20,23 +20,10 @@ def _default_serial_config(baud_rate: str) -> SerialPortConfig:
     )
 
 
-def _default_temperature_config() -> SerialPortConfig:
-    return _default_serial_config("9600")
-
-
-def _default_weight_config() -> SerialPortConfig:
-    return _default_serial_config("38400")
-
-
-def _default_height_config() -> SerialPortConfig:
-    return _default_serial_config("115200")
-
-
 def default_sensor_config() -> SensorConfigResponse:
     return SensorConfigResponse(
-        temperature=_default_temperature_config(),
-        weight=_default_weight_config(),
-        height=_default_height_config(),
+        temperature=_default_serial_config("9600"),
+        weight=_default_serial_config("38400"),
     )
 
 
@@ -66,7 +53,6 @@ def _migrate_config_raw(raw: dict) -> dict:
     defaults = {
         "temperature": "9600",
         "weight": "38400",
-        "height": "115200",
     }
     migrated: dict = {}
     for key, baud in defaults.items():
@@ -91,7 +77,7 @@ class SensorConfigService:
         raw = json.loads(self.config_path.read_text(encoding="utf-8"))
         migrated = _migrate_config_raw(raw)
         config = SensorConfigResponse.model_validate(migrated)
-        if migrated != raw:
+        if "height" in raw:
             self.save_config(SensorConfigUpdate.model_validate(migrated))
         return config
 

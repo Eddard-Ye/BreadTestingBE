@@ -11,8 +11,6 @@ from app.schemas.sensor import (
 )
 from app.services.sensor_config_service import get_sensor_config_service, list_serial_ports
 from app.services.sensor_service import (
-    calibrate_height,
-    read_height,
     read_temperature,
     read_weight,
     tare_weight,
@@ -24,7 +22,7 @@ router = APIRouter()
 
 @router.get("/config", response_model=SensorConfigResponse)
 async def get_sensor_config() -> SensorConfigResponse:
-    """获取温度、重量、高度传感器的串口配置（含是否启用 Mock）。"""
+    """获取温度、重量传感器的串口配置（含是否启用 Mock）。"""
     return get_sensor_config_service().get_config()
 
 
@@ -68,18 +66,4 @@ async def tare_current_weight() -> SensorReadingResponse:
 async def zero_current_weight() -> SensorReadingResponse:
     """对重量传感器执行强制回零。"""
     reading = zero_weight()
-    return SensorReadingResponse(value=reading.value, connected=reading.connected)
-
-
-@router.get("/height", response_model=SensorReadingResponse)
-async def get_current_height() -> SensorReadingResponse:
-    """获取当前高度及高度传感器串口连接状态。"""
-    reading = read_height()
-    return SensorReadingResponse(value=reading.value, connected=reading.connected)
-
-
-@router.post("/height/calibrate", response_model=SensorReadingResponse)
-async def calibrate_current_height() -> SensorReadingResponse:
-    """对高度传感器执行校准。"""
-    reading = calibrate_height()
     return SensorReadingResponse(value=reading.value, connected=reading.connected)

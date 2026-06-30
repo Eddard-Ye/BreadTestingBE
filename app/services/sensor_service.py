@@ -19,6 +19,10 @@ _locks = {
     "weight": threading.Lock(),
 }
 _sessions: dict[str, "_HwSession"] = {}
+_mock_weight_lock = threading.Lock()
+_mock_weight_value: float | None = None
+_port_locks: dict[str, threading.Lock] = {}
+_port_locks_guard = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -43,6 +47,37 @@ def _mock_reading(precision: int = 2) -> SensorReading:
         value=round(random.uniform(0, 100), precision),
         connected=True,
     )
+
+
+def _mock_weight_reading() -> SensorReading:
+    with _mock_weight_lock:
+        if _mock_weight_value is None:
+            value = round(random.uniform(0, 100), 1)
+        else:
+            value = round(_mock_weight_value + random.uniform(-0.2, 0.2), 1)
+    return SensorReading(value=value, connected=True)
+
+
+def _set_mock_weight_baseline(value: float = 0.0) -> SensorReading:
+    global _mock_weight_value
+    with _mock_weight_lock:
+        _mock_weight_value = value
+    return SensorReading(value=round(value, 1), connected=True)
+
+
+def _reset_mock_weight_state() -> None:
+    global _mock_weight_value
+    with _mock_weight_lock:
+        _mock_weight_value = None
+
+
+def _port_lock(port: str) -> threading.Lock:
+    with _port_locks_guard:
+        lock = _port_locks.get(port)
+        if lock is None:
+            lock = threading.Lock()
+            _port_locks[port] = lock
+        return lock
 
 
 def _hw_params(config: SerialPortConfig, sensor_key: str) -> dict:
@@ -86,8 +121,11 @@ def invalidate_sensor_sessions(sensor_key: str | None = None) -> None:
     """Close cached hardware sessions after config changes or mock mode."""
     if sensor_key is None:
         keys = list(_sessions.keys())
+        _reset_mock_weight_state()
     else:
         keys = [sensor_key]
+        if sensor_key == "weight":
+            _reset_mock_weight_state()
     for key in keys:
         with _locks[key]:
             _close_session(key)
@@ -104,46 +142,48 @@ def _with_hw_session(
         return SensorReading(value=0.0, connected=False)
 
     key = _config_key(config, sensor_key)
-    lock = _locks[sensor_key]
-    with lock:
-        session = _sessions.get(sensor_key)
-        if (
-            session is not None
-            and session.connected
-            and session.config_key == key
-            and _serial_is_open(session.instance)
-        ):
-            instance = session.instance
-        else:
-            if session is not None:
-                _close_session(sensor_key)
-            instance = factory()
-            try:
-                instance.open()
-            except Exception:
+    sensor_lock = _locks[sensor_key]
+
+    with _port_lock(config.port):
+        with sensor_lock:
+            session = _sessions.get(sensor_key)
+            if (
+                session is not None
+                and session.connected
+                and session.config_key == key
+                and _serial_is_open(session.instance)
+            ):
+                instance = session.instance
+            else:
+                if session is not None:
+                    _close_session(sensor_key)
+                instance = factory()
                 try:
-                    instance.close()
+                    instance.open()
                 except Exception:
-                    pass
-                return SensorReading(value=0.0, connected=False)
-            _sessions[sensor_key] = _HwSession(
-                config_key=key,
-                instance=instance,
-                connected=True,
-            )
+                    try:
+                        instance.close()
+                    except Exception:
+                        pass
+                    return SensorReading(value=0.0, connected=False)
+                _sessions[sensor_key] = _HwSession(
+                    config_key=key,
+                    instance=instance,
+                    connected=True,
+                )
 
-    try:
-        value = operation(instance)
-    except Exception:
-        with lock:
-            _close_session(sensor_key)
-        return SensorReading(value=0.0, connected=False)
+        try:
+            value = operation(instance)
+        except Exception:
+            with sensor_lock:
+                _close_session(sensor_key)
+            return SensorReading(value=0.0, connected=False)
 
-    with lock:
-        active = _sessions.get(sensor_key)
-        if active is not None:
-            active.connected = True
-    return SensorReading(value=round(value, precision), connected=True)
+        with sensor_lock:
+            active = _sessions.get(sensor_key)
+            if active is not None:
+                active.connected = True
+        return SensorReading(value=round(value, precision), connected=True)
 
 
 def _read_with_session(
@@ -236,7 +276,7 @@ def read_weight() -> SensorReading:
     """读取当前重量及串口连接状态。"""
     config = get_sensor_config_service().get_config().weight
     if config.enable_mock:
-        return _mock_reading(precision=1)
+        return _mock_weight_reading()
     return _read_weight_hw(config)
 
 
@@ -244,7 +284,7 @@ def tare_weight() -> SensorReading:
     """对重量传感器执行去皮，并返回去皮后的读数（克）。"""
     config = get_sensor_config_service().get_config().weight
     if config.enable_mock:
-        return SensorReading(value=0.0, connected=True)
+        return _set_mock_weight_baseline(0.0)
     return _tare_weight_hw(config)
 
 
@@ -252,5 +292,5 @@ def zero_weight() -> SensorReading:
     """对重量传感器执行强制回零，并返回回零后的读数（克）。"""
     config = get_sensor_config_service().get_config().weight
     if config.enable_mock:
-        return SensorReading(value=0.0, connected=True)
+        return _set_mock_weight_baseline(0.0)
     return _zero_weight_hw(config)

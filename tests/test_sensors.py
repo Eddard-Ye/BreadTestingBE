@@ -541,3 +541,23 @@ def test_post_weight_zero_mock(client: TestClient) -> None:
     data = response.json()
     assert data["value"] == 0.0
     assert data["connected"] is True
+
+    follow_up = client.get("/api/v1/sensors/weight")
+    assert follow_up.status_code == 200
+    assert abs(follow_up.json()["value"]) <= 0.2
+
+
+def test_post_weight_tare_returns_502_when_disconnected(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    from app.services import sensor_service
+
+    monkeypatch.setattr(
+        "app.api.v1.endpoints.sensors.tare_weight",
+        lambda: sensor_service.SensorReading(value=0.0, connected=False),
+    )
+
+    response = client.post("/api/v1/sensors/weight/tare")
+    assert response.status_code == 502
+    assert "校准失败" in response.json()["detail"]

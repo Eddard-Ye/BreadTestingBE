@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import require_auth
 from app.schemas.sensor import (
@@ -11,6 +11,7 @@ from app.schemas.sensor import (
 )
 from app.services.sensor_config_service import get_sensor_config_service, list_serial_ports
 from app.services.sensor_service import (
+    SensorReading,
     read_temperature,
     read_weight,
     tare_weight,
@@ -18,6 +19,12 @@ from app.services.sensor_service import (
 )
 
 router = APIRouter()
+
+
+def _require_weight_action(reading: SensorReading, detail: str) -> SensorReadingResponse:
+    if not reading.connected:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
+    return SensorReadingResponse(value=reading.value, connected=reading.connected)
 
 
 @router.get("/config", response_model=SensorConfigResponse)
@@ -58,12 +65,20 @@ async def get_current_weight() -> SensorReadingResponse:
 @router.post("/weight/tare", response_model=SensorReadingResponse)
 async def tare_current_weight() -> SensorReadingResponse:
     """对重量传感器执行去皮（校准）。"""
+    config = get_sensor_config_service().get_config().weight
     reading = tare_weight()
-    return SensorReadingResponse(value=reading.value, connected=reading.connected)
+    return _require_weight_action(
+        reading,
+        f"重量传感器校准失败，请检查串口 {config.port} 是否被占用或配置是否正确",
+    )
 
 
 @router.post("/weight/zero", response_model=SensorReadingResponse)
 async def zero_current_weight() -> SensorReadingResponse:
     """对重量传感器执行强制回零。"""
+    config = get_sensor_config_service().get_config().weight
     reading = zero_weight()
-    return SensorReadingResponse(value=reading.value, connected=reading.connected)
+    return _require_weight_action(
+        reading,
+        f"重量传感器回零失败，请检查串口 {config.port} 是否被占用或配置是否正确",
+    )

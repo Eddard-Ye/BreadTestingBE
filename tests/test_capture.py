@@ -15,7 +15,8 @@ def test_capture_measurement_success(client: TestClient, monkeypatch) -> None:
 
     class FakeResponse:
         content = (
-            b'{"ok": true, "length_mm": 101.9, "width_mm": 51.2, "water_cut_mm": 42.5}'
+            b'{"ok": true, "length_mm": 101.9, "width_mm": 51.2, '
+            b'"height_mm": 27.2, "water_cut_mm": 42.5}'
         )
 
         def raise_for_status(self) -> None:
@@ -30,6 +31,7 @@ def test_capture_measurement_success(client: TestClient, monkeypatch) -> None:
                 "detections": 1,
                 "length_mm": 101.9,
                 "width_mm": 51.2,
+                "height_mm": 27.2,
                 "water_cut_mm": 42.5,
             }
 
@@ -64,7 +66,7 @@ def test_capture_measurement_success(client: TestClient, monkeypatch) -> None:
     data = response.json()
     assert data["temperature"] == "61.7"
     assert data["weight"] == "90.57"
-    assert data["height"] == "0.0"
+    assert data["height"] == "27.2"
     assert data["length"] == "101.9"
     assert data["width"] == "51.2"
     assert data["waterCutMm"] == "42.5"
@@ -85,7 +87,7 @@ def test_capture_measurement_water_cut_disabled(client: TestClient, monkeypatch)
     captured_payload: dict = {}
 
     class FakeResponse:
-        content = b'{"ok": true, "length_mm": 122.3, "width_mm": 62.9, "water_cut_mm": null}'
+        content = b'{"ok": true, "length_mm": 122.3, "width_mm": 62.9, "height_mm": 29.5, "water_cut_mm": null}'
 
         def raise_for_status(self) -> None:
             return None
@@ -106,6 +108,7 @@ def test_capture_measurement_water_cut_disabled(client: TestClient, monkeypatch)
                 "detections": 1,
                 "length_mm": 122.3,
                 "width_mm": 62.9,
+                "height_mm": 29.5,
                 "water_cut_mm": None,
             }
 
@@ -134,6 +137,7 @@ def test_capture_measurement_water_cut_disabled(client: TestClient, monkeypatch)
     data = response.json()
     assert data["length"] == "122.3"
     assert data["width"] == "62.9"
+    assert data["height"] == "29.5"
     assert data["waterCutMm"] == "0"
     assert data["fileName"] == "bread1_20260625_003728.jpg"
     assert data["imagePreviewUrl"] == "/api/v1/capture/preview/bread1_20260625_003728.jpg"

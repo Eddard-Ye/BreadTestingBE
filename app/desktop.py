@@ -59,6 +59,50 @@ def _resolve_gui(gui: str | None) -> str | None:
     return None
 
 
+def _windows_primary_screen_geometry() -> tuple[int, int, int, int]:
+    """主屏 (x, y, width, height)。frameless + maximized 在 Windows 上不可靠，创建时直接铺满。"""
+    try:
+        screen = webview.screens[0]
+        return screen.x, screen.y, screen.width, screen.height
+    except Exception:
+        logger.warning("无法读取 webview.screens，回退 Win32 GetSystemMetrics", exc_info=True)
+        user32 = __import__("ctypes").windll.user32
+        return 0, 0, user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+
+
+def _build_window_kwargs(settings) -> dict:
+    common = {
+        "title": settings.DESKTOP_TITLE,
+        "url": settings.DESKTOP_INIT_URL,
+        "resizable": settings.DESKTOP_RESIZABLE,
+        "min_size": (settings.DESKTOP_MIN_WIDTH, settings.DESKTOP_MIN_HEIGHT),
+        "zoomable": settings.DESKTOP_ZOOMABLE,
+        "frameless": settings.DESKTOP_FRAMELESS,
+        "easy_drag": settings.DESKTOP_EASY_DRAG,
+        "background_color": settings.DESKTOP_BACKGROUND_COLOR,
+        "fullscreen": settings.DESKTOP_FULLSCREEN,
+    }
+
+    if sys.platform == "win32" and not settings.DESKTOP_FULLSCREEN:
+        x, y, width, height = _windows_primary_screen_geometry()
+        logger.info("Windows 桌面窗口: x=%s y=%s width=%s height=%s", x, y, width, height)
+        return {
+            **common,
+            "x": x,
+            "y": y,
+            "width": width,
+            "height": height,
+            "maximized": False,
+        }
+
+    return {
+        **common,
+        "width": settings.DESKTOP_WIDTH,
+        "height": settings.DESKTOP_HEIGHT,
+        "maximized": settings.DESKTOP_MAXIMIZED,
+    }
+
+
 def launch_desktop() -> None:
     settings = get_settings()
 
@@ -72,20 +116,7 @@ def launch_desktop() -> None:
 
     _wait_for_server(settings.DESKTOP_INIT_URL)
 
-    window = webview.create_window(
-        title=settings.DESKTOP_TITLE,
-        url=settings.DESKTOP_INIT_URL,
-        width=settings.DESKTOP_WIDTH,
-        height=settings.DESKTOP_HEIGHT,
-        resizable=settings.DESKTOP_RESIZABLE,
-        min_size=(settings.DESKTOP_MIN_WIDTH, settings.DESKTOP_MIN_HEIGHT),
-        zoomable=settings.DESKTOP_ZOOMABLE,
-        frameless=settings.DESKTOP_FRAMELESS,
-        easy_drag=settings.DESKTOP_EASY_DRAG,
-        background_color=settings.DESKTOP_BACKGROUND_COLOR,
-        maximized=settings.DESKTOP_MAXIMIZED,
-        fullscreen=settings.DESKTOP_FULLSCREEN,
-    )
+    window = webview.create_window(**_build_window_kwargs(settings))
 
     if settings.DESKTOP_DISABLE_TOUCH_SCROLL:
         window.events.loaded += _install_touch_scroll_lock

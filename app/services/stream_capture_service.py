@@ -138,13 +138,18 @@ def capture_measurement(*, name: str, water_cut: bool) -> CaptureMeasurementResp
     else:
         water_cut_mm = "0"
 
+    height_raw = _pick_field(body, "height_mm", "heightMm", "height", "Height")
+    if height_raw is None and isinstance(body.get("record"), dict):
+        height_raw = _pick_field(body["record"], "height_mm", "heightMm", "height", "Height")
+    height = _normalize_metric(height_raw, precision=1)
+
     file_name = _normalize_required_text(_pick_field(body, "fileName", "file_name"))
 
     return CaptureMeasurementResponse(
         ok=True,
         temperature=f"{temperature_reading.value:.1f}",
         weight=f"{weight_reading.value:.2f}",
-        height="0.0",
+        height=height,
         length=length,
         width=width,
         water_cut_mm=water_cut_mm,

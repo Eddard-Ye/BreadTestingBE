@@ -1,3 +1,4 @@
+import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -45,20 +46,21 @@ async def update_sensor_config(
 @router.get("/ports", response_model=SerialPortsResponse)
 async def get_serial_ports() -> SerialPortsResponse:
     """列出当前可用串口，供配置窗口下拉选择。"""
-    return SerialPortsResponse(ports=list_serial_ports())
+    ports = await asyncio.to_thread(list_serial_ports)
+    return SerialPortsResponse(ports=ports)
 
 
 @router.get("/temperature", response_model=SensorReadingResponse)
 async def get_current_temperature() -> SensorReadingResponse:
     """获取当前温度及温度传感器串口连接状态。"""
-    reading = read_temperature()
+    reading = await asyncio.to_thread(read_temperature)
     return SensorReadingResponse(value=reading.value, connected=reading.connected)
 
 
 @router.get("/weight", response_model=SensorReadingResponse)
 async def get_current_weight() -> SensorReadingResponse:
     """获取当前重量及重量传感器串口连接状态。"""
-    reading = read_weight()
+    reading = await asyncio.to_thread(read_weight)
     return SensorReadingResponse(value=reading.value, connected=reading.connected)
 
 
@@ -66,7 +68,7 @@ async def get_current_weight() -> SensorReadingResponse:
 async def tare_current_weight() -> SensorReadingResponse:
     """对重量传感器执行去皮（校准）。"""
     config = get_sensor_config_service().get_config().weight
-    reading = tare_weight()
+    reading = await asyncio.to_thread(tare_weight)
     return _require_weight_action(
         reading,
         f"重量传感器校准失败，请检查串口 {config.port} 是否被占用或配置是否正确",
@@ -77,7 +79,7 @@ async def tare_current_weight() -> SensorReadingResponse:
 async def zero_current_weight() -> SensorReadingResponse:
     """对重量传感器执行强制回零。"""
     config = get_sensor_config_service().get_config().weight
-    reading = zero_weight()
+    reading = await asyncio.to_thread(zero_weight)
     return _require_weight_action(
         reading,
         f"重量传感器回零失败，请检查串口 {config.port} 是否被占用或配置是否正确",

@@ -171,7 +171,11 @@ def test_create_batch_unknown_recipe(client: TestClient) -> None:
     assert response.status_code == 404
 
 
-def test_export_measurements_csv(client: TestClient) -> None:
+def test_export_measurements_xlsx(client: TestClient) -> None:
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
     recipe_id = _create_test_recipe(client)
     batch = {
         "records": [
@@ -186,13 +190,16 @@ def test_export_measurements_csv(client: TestClient) -> None:
         params={"recipeId": recipe_id, "recordType": "product"},
     )
     assert response.status_code == 200
-    assert response.headers["content-type"].startswith("text/csv")
+    assert response.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
     assert "attachment" in response.headers.get("content-disposition", "")
+    assert response.headers["content-disposition"].endswith('.xlsx"')
 
-    body = response.content.decode("utf-8-sig")
-    lines = body.strip().splitlines()
-    assert lines[0].startswith("名称,温度")
-    assert len(lines) == 13  # header + 12 rows
+    workbook = load_workbook(BytesIO(response.content))
+    worksheet = workbook.active
+    assert worksheet.max_row == 13  # header + 12 rows
+    assert [cell.value for cell in worksheet[1]][:2] == ["名称", "温度(°C)"]
 
 
 def test_export_measurements_respects_time_filter(client: TestClient) -> None:
@@ -222,6 +229,9 @@ def test_export_measurements_respects_time_filter(client: TestClient) -> None:
         },
     )
     assert response.status_code == 200
-    body = response.content.decode("utf-8-sig")
-    lines = [line for line in body.strip().splitlines() if line]
-    assert len(lines) == 2  # header + 1 row
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    workbook = load_workbook(BytesIO(response.content))
+    assert workbook.active.max_row == 2  # header + 1 row

@@ -97,7 +97,7 @@ class MeasurementService:
         end_time: datetime | None = None,
         has_preview: bool | None = None,
     ) -> list[MeasurementResponse]:
-        """按筛选条件返回全部录入记录（不分页，供 CSV 导出）。"""
+        """按筛选条件返回全部录入记录（不分页，供 Excel 导出）。"""
         filters = {
             "recipe_id": recipe_id,
             "record_type": record_type,

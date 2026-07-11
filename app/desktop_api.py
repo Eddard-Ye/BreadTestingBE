@@ -22,7 +22,7 @@ class DesktopApi:
         self._base_url = f"http://{settings.DESKTOP_HOST}:{settings.DESKTOP_PORT}"
 
     def save_export(self, export_path: str, default_filename: str) -> dict:
-        """打开系统「另存为」对话框，从本地后端下载 CSV 并写入用户选择的路径。"""
+        """打开系统「另存为」对话框，从本地后端下载 Excel 并写入用户选择的路径。"""
         if not export_path.startswith(_EXPORT_PATH_PREFIX):
             return {"ok": False, "message": "不允许的导出地址"}
 
@@ -35,14 +35,14 @@ class DesktopApi:
         dialog_result = window.create_file_dialog(
             webview.FileDialog.SAVE,
             save_filename=safe_name,
-            file_types=("CSV 文件 (*.csv)", "所有文件 (*.*)"),
+            file_types=("Excel 文件 (*.xlsx)", "所有文件 (*.*)"),
         )
         if not dialog_result:
             return {"ok": False, "cancelled": True}
 
         save_path = Path(dialog_result[0] if isinstance(dialog_result, (list, tuple)) else dialog_result)
-        if save_path.suffix.lower() != ".csv":
-            save_path = save_path.with_suffix(".csv")
+        if save_path.suffix.lower() != ".xlsx":
+            save_path = save_path.with_suffix(".xlsx")
 
         url = f"{self._base_url}{export_path}"
         parsed = urlparse(url)
@@ -53,7 +53,7 @@ class DesktopApi:
             response = httpx.get(url, timeout=120.0)
             response.raise_for_status()
             save_path.write_bytes(response.content)
-            logger.info("CSV 已导出: %s", save_path)
+            logger.info("Excel 已导出: %s", save_path)
             return {"ok": True, "path": str(save_path)}
         except httpx.HTTPError as exc:
             logger.warning("导出下载失败: %s", exc, exc_info=True)

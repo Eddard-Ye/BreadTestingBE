@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-import csv
 import io
 import re
 from datetime import datetime
 
+from openpyxl import Workbook
+
 from app.schemas.measurement import MeasurementResponse
 
-_CSV_HEADERS = [
+_EXPORT_HEADERS = [
     "名称",
     "温度(°C)",
     "重量(g)",
@@ -23,8 +24,10 @@ _WINDOWS_ILLEGAL_FILENAME = re.compile(r'[<>:"/\\|?*]')
 
 def sanitize_export_filename(filename: str) -> str:
     cleaned = _WINDOWS_ILLEGAL_FILENAME.sub("_", filename.strip())
-    if not cleaned.lower().endswith(".csv"):
-        cleaned = f"{cleaned}.csv"
+    if cleaned.lower().endswith(".csv"):
+        cleaned = cleaned[:-4]
+    if not cleaned.lower().endswith(".xlsx"):
+        cleaned = f"{cleaned}.xlsx"
     return cleaned
 
 
@@ -33,12 +36,13 @@ def format_recorded_at(dt: datetime) -> str:
     return dt.strftime("%Y/%m/%d %H:%M:%S")
 
 
-def build_measurements_csv(records: list[MeasurementResponse]) -> bytes:
-    buffer = io.StringIO()
-    writer = csv.writer(buffer, lineterminator="\n")
-    writer.writerow(_CSV_HEADERS)
+def build_measurements_xlsx(records: list[MeasurementResponse]) -> bytes:
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "录入数据"
+    worksheet.append(_EXPORT_HEADERS)
     for record in records:
-        writer.writerow(
+        worksheet.append(
             [
                 record.sample_name,
                 record.temperature,
@@ -50,4 +54,6 @@ def build_measurements_csv(records: list[MeasurementResponse]) -> bytes:
                 format_recorded_at(record.recorded_at),
             ]
         )
-    return ("\ufeff" + buffer.getvalue()).encode("utf-8")
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()

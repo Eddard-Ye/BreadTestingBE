@@ -12,6 +12,7 @@ import uvicorn
 import webview
 
 from app.core.config import get_settings
+from app.desktop_api import DesktopApi
 
 logger = logging.getLogger(__name__)
 
@@ -116,11 +117,13 @@ def launch_desktop() -> None:
 
     _wait_for_server(settings.DESKTOP_INIT_URL)
 
-    window = webview.create_window(**_build_window_kwargs(settings))
+    api = DesktopApi(settings)
+    window = webview.create_window(**_build_window_kwargs(settings), js_api=api)
 
     if settings.DESKTOP_DISABLE_TOUCH_SCROLL:
         window.events.loaded += _install_touch_scroll_lock
 
+    webview.settings["ALLOW_DOWNLOADS"] = True
     gui = _resolve_gui(settings.DESKTOP_GUI)
     if gui:
         webview.start(gui=gui)

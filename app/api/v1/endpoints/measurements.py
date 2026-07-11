@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 
 from app.api.deps import get_measurement_service_dep
 from app.schemas.measurement import (
@@ -9,6 +10,7 @@ from app.schemas.measurement import (
     MeasurementListResponse,
     MeasurementResponse,
 )
+from app.services.measurement_export import build_measurements_csv, sanitize_export_filename
 from app.services.measurement_service import MeasurementService
 
 router = APIRouter()
@@ -40,6 +42,33 @@ async def list_measurements(
         total=total,
         page=page,
         page_size=page_size,
+    )
+
+
+@router.get("/export")
+async def export_measurements(
+    service: Annotated[MeasurementService, Depends(get_measurement_service_dep)],
+    recipe_id: Annotated[str, Query(alias="recipeId", min_length=1)],
+    record_type: Annotated[str | None, Query(alias="recordType")] = None,
+    start_time: Annotated[datetime | None, Query(alias="startTime")] = None,
+    end_time: Annotated[datetime | None, Query(alias="endTime")] = None,
+    has_preview: Annotated[bool | None, Query(alias="hasPreview")] = None,
+    filename: Annotated[str | None, Query()] = None,
+) -> Response:
+    """导出筛选后的全部录入数据为 CSV（UTF-8 BOM，Excel 可直接打开）。"""
+    records = service.list_all_records(
+        recipe_id=recipe_id,
+        record_type=record_type,
+        start_time=start_time,
+        end_time=end_time,
+        has_preview=has_preview,
+    )
+    content = build_measurements_csv(records)
+    safe_name = sanitize_export_filename(filename or f"measurements_{recipe_id}.csv")
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
     )
 
 

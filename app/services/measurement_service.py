@@ -88,6 +88,29 @@ class MeasurementService:
         rows = self.db.scalars(query).all()
         return [self._to_response(row) for row in rows], total
 
+    def list_all_records(
+        self,
+        *,
+        recipe_id: str | None = None,
+        record_type: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        has_preview: bool | None = None,
+    ) -> list[MeasurementResponse]:
+        """按筛选条件返回全部录入记录（不分页，供 CSV 导出）。"""
+        filters = {
+            "recipe_id": recipe_id,
+            "record_type": record_type,
+            "start_time": start_time,
+            "end_time": end_time,
+            "has_preview": has_preview,
+        }
+
+        query = select(MeasurementRecord).order_by(MeasurementRecord.recorded_at.desc())
+        query = self._apply_filters(query, **filters)
+        rows = self.db.scalars(query).all()
+        return [self._to_response(row) for row in rows]
+
     def create_batch(self, records: list[MeasurementCreate]) -> list[MeasurementResponse]:
         if not records:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="批次数据不能为空")

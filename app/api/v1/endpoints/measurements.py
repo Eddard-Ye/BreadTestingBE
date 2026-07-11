@@ -10,7 +10,7 @@ from app.schemas.measurement import (
     MeasurementListResponse,
     MeasurementResponse,
 )
-from app.services.measurement_export import build_measurements_csv, sanitize_export_filename
+from app.services.measurement_export import build_measurements_xlsx, sanitize_export_filename
 from app.services.measurement_service import MeasurementService
 
 router = APIRouter()
@@ -55,7 +55,7 @@ async def export_measurements(
     has_preview: Annotated[bool | None, Query(alias="hasPreview")] = None,
     filename: Annotated[str | None, Query()] = None,
 ) -> Response:
-    """导出筛选后的全部录入数据为 CSV（UTF-8 BOM，Excel 可直接打开）。"""
+    """导出筛选后的全部录入数据为 Excel (.xlsx)。"""
     records = service.list_all_records(
         recipe_id=recipe_id,
         record_type=record_type,
@@ -63,11 +63,11 @@ async def export_measurements(
         end_time=end_time,
         has_preview=has_preview,
     )
-    content = build_measurements_csv(records)
-    safe_name = sanitize_export_filename(filename or f"measurements_{recipe_id}.csv")
+    content = build_measurements_xlsx(records)
+    safe_name = sanitize_export_filename(filename or f"measurements_{recipe_id}.xlsx")
     return Response(
         content=content,
-        media_type="text/csv; charset=utf-8",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
     )
 

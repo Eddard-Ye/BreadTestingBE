@@ -169,3 +169,59 @@ def test_create_batch_unknown_recipe(client: TestClient) -> None:
     batch = {"records": [_sample_measurement("missing")]}
     response = client.post("/api/v1/measurements/batch", json=batch)
     assert response.status_code == 404
+
+
+def test_export_measurements_csv(client: TestClient) -> None:
+    recipe_id = _create_test_recipe(client)
+    batch = {
+        "records": [
+            {**_sample_measurement(recipe_id, slot_index=i), "sampleName": f"测试配方-成品-{i + 1}"}
+            for i in range(12)
+        ]
+    }
+    client.post("/api/v1/measurements/batch", json=batch)
+
+    response = client.get(
+        "/api/v1/measurements/export",
+        params={"recipeId": recipe_id, "recordType": "product"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert "attachment" in response.headers.get("content-disposition", "")
+
+    body = response.content.decode("utf-8-sig")
+    lines = body.strip().splitlines()
+    assert lines[0].startswith("名称,温度")
+    assert len(lines) == 13  # header + 12 rows
+
+
+def test_export_measurements_respects_time_filter(client: TestClient) -> None:
+    recipe_id = _create_test_recipe(client)
+    batch = {
+        "records": [
+            {
+                **_sample_measurement(recipe_id, slot_index=0),
+                "recordedAt": "2026-06-22T16:32:56",
+            },
+            {
+                **_sample_measurement(recipe_id, slot_index=1),
+                "sampleName": "测试配方-成品-2",
+                "recordedAt": "2026-07-01T10:00:00",
+            },
+        ]
+    }
+    client.post("/api/v1/measurements/batch", json=batch)
+
+    response = client.get(
+        "/api/v1/measurements/export",
+        params={
+            "recipeId": recipe_id,
+            "recordType": "product",
+            "startTime": "2026-06-22T16:10:00",
+            "endTime": "2026-06-22T18:10:59",
+        },
+    )
+    assert response.status_code == 200
+    body = response.content.decode("utf-8-sig")
+    lines = [line for line in body.strip().splitlines() if line]
+    assert len(lines) == 2  # header + 1 row

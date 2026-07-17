@@ -37,6 +37,7 @@ async def capture_measurement_for_entry(
         capture_measurement,
         name=payload.name,
         water_cut=payload.water_cut,
+        height_calc_mode=payload.height_calc_mode,
     )
 
 

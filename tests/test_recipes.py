@@ -10,6 +10,7 @@ NEW_RECIPE = {
     "height": {"min": 25, "max": 35},
     "waterCutWidth": {"min": 40, "max": 50},
     "enableWaterCut": True,
+    "heightCalcMode": "peak",
     "enableBottomMeasurement": False,
     "bottomParams": {
         "batchSize": 0,
@@ -19,6 +20,7 @@ NEW_RECIPE = {
         "width": {"min": 0, "max": 0},
         "height": {"min": 0, "max": 0},
         "waterCutWidth": {"min": 0, "max": 0},
+        "heightCalcMode": "peak",
     },
     "enableMiddleMeasurement": False,
     "middleParams": {
@@ -29,6 +31,7 @@ NEW_RECIPE = {
         "width": {"min": 0, "max": 0},
         "height": {"min": 0, "max": 0},
         "waterCutWidth": {"min": 0, "max": 0},
+        "heightCalcMode": "peak",
     },
 }
 

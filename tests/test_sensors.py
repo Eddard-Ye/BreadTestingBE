@@ -31,6 +31,8 @@ def test_get_sensor_config_creates_defaults(client: TestClient, isolated_sensor_
     assert data["temperature"]["baudRate"] == "9600"
     assert data["weight"]["baudRate"] == "38400"
     assert data["temperature"]["dataBits"] == "8"
+    assert data["temperature"]["calibrationDelta"] == 0
+    assert data["weight"]["calibrationDelta"] == 0
     assert "height" not in data
     assert isolated_sensor_config.exists()
 
@@ -129,6 +131,77 @@ def test_read_temperature_uses_hardware_when_mock_disabled(
     response = client.get("/api/v1/sensors/temperature")
     assert response.status_code == 200
     assert response.json() == {"value": 36.5, "connected": True}
+
+
+def test_read_temperature_applies_calibration_delta(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    from app.services import sensor_service
+
+    payload = {
+        "temperature": {
+            "port": "COM3",
+            "baudRate": "9600",
+            "dataBits": "8",
+            "stopBits": "1",
+            "parity": "None",
+            "enableMock": False,
+            "calibrationDelta": -1.5,
+        },
+        "weight": {
+            "port": "COM4",
+            "baudRate": "38400",
+            "dataBits": "8",
+            "stopBits": "1",
+            "parity": "None",
+            "enableMock": True,
+        },
+    }
+    headers = _auth_headers(client)
+    client.put("/api/v1/sensors/config", json=payload, headers=headers)
+
+    monkeypatch.setattr(
+        sensor_service,
+        "_read_temperature_hw",
+        lambda _config: sensor_service.SensorReading(value=36.5, connected=True),
+    )
+
+    response = client.get("/api/v1/sensors/temperature")
+    assert response.status_code == 200
+    assert response.json() == {"value": 35.0, "connected": True}
+
+
+def test_update_sensor_config_persists_temperature_calibration_delta(
+    client: TestClient,
+    isolated_sensor_config,
+) -> None:
+    payload = {
+        "temperature": {
+            "port": "COM3",
+            "baudRate": "9600",
+            "dataBits": "8",
+            "stopBits": "1",
+            "parity": "None",
+            "enableMock": True,
+            "calibrationDelta": 2.25,
+        },
+        "weight": {
+            "port": "COM4",
+            "baudRate": "38400",
+            "dataBits": "8",
+            "stopBits": "1",
+            "parity": "None",
+            "enableMock": True,
+        },
+    }
+    headers = _auth_headers(client)
+    response = client.put("/api/v1/sensors/config", json=payload, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["temperature"]["calibrationDelta"] == 2.25
+
+    saved = json.loads(isolated_sensor_config.read_text(encoding="utf-8"))
+    assert saved["temperature"]["calibrationDelta"] == 2.25
 
 
 def test_get_serial_ports(client: TestClient, monkeypatch) -> None:

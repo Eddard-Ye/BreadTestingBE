@@ -53,6 +53,9 @@ def test_capture_measurement_success(client: TestClient, monkeypatch) -> None:
                 "temperature": "61.7",
                 "weight": "90.57g",
                 "water_cut": True,
+                "height_calc_mode": "peak",
+                "height_scale": 1.0,
+                "height_offset": 0.0,
             }
             return FakeResponse()
 
@@ -60,7 +63,7 @@ def test_capture_measurement_success(client: TestClient, monkeypatch) -> None:
 
     response = client.post(
         "/api/v1/capture/measurement",
-        json={"name": "测试配方-成品-1", "waterCut": True},
+        json={"name": "测试配方-成品-1", "waterCut": True, "heightCalcMode": "peak"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -130,10 +133,15 @@ def test_capture_measurement_water_cut_disabled(client: TestClient, monkeypatch)
 
     response = client.post(
         "/api/v1/capture/measurement",
-        json={"name": "测试配方-底片-1", "waterCut": False},
+        json={
+            "name": "测试配方-底片-1",
+            "waterCut": False,
+            "heightCalcMode": "average",
+        },
     )
     assert response.status_code == 200
     assert captured_payload["water_cut"] is False
+    assert captured_payload["height_calc_mode"] == "average"
     data = response.json()
     assert data["length"] == "122.3"
     assert data["width"] == "62.9"

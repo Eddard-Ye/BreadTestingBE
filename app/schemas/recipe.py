@@ -1,5 +1,10 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
+
+HeightCalcMode = Literal["peak", "average"]
+DEFAULT_HEIGHT_CALC_MODE: HeightCalcMode = "peak"
 
 
 class RangeSpec(BaseModel):
@@ -25,6 +30,7 @@ class SectionParams(BaseModel):
     width: RangeSpec
     height: RangeSpec
     water_cut_width: RangeSpec
+    height_calc_mode: HeightCalcMode = DEFAULT_HEIGHT_CALC_MODE
 
 
 class RecipeBase(BaseModel):
@@ -39,6 +45,7 @@ class RecipeBase(BaseModel):
     height: RangeSpec
     water_cut_width: RangeSpec
     enable_water_cut: bool = False
+    height_calc_mode: HeightCalcMode = DEFAULT_HEIGHT_CALC_MODE
     enable_bottom_measurement: bool = False
     bottom_params: SectionParams
     enable_middle_measurement: bool = False

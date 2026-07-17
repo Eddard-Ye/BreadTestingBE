@@ -45,6 +45,8 @@ class StreamCaptureConfigService:
                     host=config.host,
                     port=config.port,
                     timeout_seconds=config.timeout_seconds,
+                    height_scale=config.height_scale,
+                    height_offset=config.height_offset,
                 )
             )
             return config
@@ -61,6 +63,16 @@ class StreamCaptureConfigService:
                 payload.timeout_seconds
                 if payload.timeout_seconds is not None
                 else current.timeout_seconds
+            ),
+            height_scale=(
+                payload.height_scale
+                if payload.height_scale is not None
+                else current.height_scale
+            ),
+            height_offset=(
+                payload.height_offset
+                if payload.height_offset is not None
+                else current.height_offset
             ),
         )
         self.config_path.parent.mkdir(parents=True, exist_ok=True)

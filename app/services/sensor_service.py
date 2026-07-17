@@ -265,11 +265,18 @@ def _zero_weight_hw(config: SerialPortConfig) -> SensorReading:
 
 
 def read_temperature() -> SensorReading:
-    """读取当前温度及串口连接状态。"""
+    """读取当前温度及串口连接状态（含校准偏移）。"""
     config = get_sensor_config_service().get_config().temperature
     if config.enable_mock:
-        return _mock_reading(precision=2)
-    return _read_temperature_hw(config)
+        reading = _mock_reading(precision=2)
+    else:
+        reading = _read_temperature_hw(config)
+
+    if not reading.connected:
+        return reading
+
+    calibrated = round(reading.value + config.calibration_delta, 2)
+    return SensorReading(value=calibrated, connected=True)
 
 
 def read_weight() -> SensorReading:

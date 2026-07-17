@@ -57,6 +57,12 @@ def main() -> int:
         action="store_true",
         help="For capture, compute and render water-cut width.",
     )
+    parser.add_argument(
+        "--height-calc-mode",
+        choices=("peak", "average"),
+        default="peak",
+        help="For capture, height calculation mode (peak or average).",
+    )
     args = parser.parse_args()
 
     base = f"http://{args.host}:{args.port}"
@@ -79,6 +85,7 @@ def main() -> int:
                 "temperature": args.temperature,
                 "weight": args.weight,
                 "water_cut": bool(args.water_cut),
+                "height_calc_mode": args.height_calc_mode,
             },
         )
     else:

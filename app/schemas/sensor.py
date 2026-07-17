@@ -20,6 +20,7 @@ class SerialPortConfig(BaseModel):
     stop_bits: str = Field(default="1", min_length=1, max_length=3)
     parity: str = Field(default="None", min_length=1, max_length=16)
     enable_mock: bool = True
+    calibration_delta: float = 0.0
 
 
 class SensorConfigResponse(BaseModel):

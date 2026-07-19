@@ -10,6 +10,7 @@ NEW_RECIPE = {
     "height": {"min": 25, "max": 35},
     "waterCutWidth": {"min": 40, "max": 50},
     "enableWaterCut": True,
+    "enableRoundBread": False,
     "heightCalcMode": "peak",
     "enableBottomMeasurement": False,
     "bottomParams": {
@@ -67,6 +68,7 @@ def test_get_recipe(client: TestClient) -> None:
     assert data["id"] == recipe_id
     assert data["batchSize"] == 4
     assert data["enableWaterCut"] is True
+    assert data["enableRoundBread"] is False
 
 
 def test_get_recipe_not_found(client: TestClient) -> None:
@@ -88,6 +90,7 @@ def test_create_update_delete_recipe(client: TestClient) -> None:
     recipe_id = created["id"]
     assert created["name"] == "测试配方A"
     assert created["enableWaterCut"] is True
+    assert created["enableRoundBread"] is False
 
     get_created = client.get(f"/api/v1/recipes/{recipe_id}")
     assert get_created.status_code == 200

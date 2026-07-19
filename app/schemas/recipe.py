@@ -45,6 +45,7 @@ class RecipeBase(BaseModel):
     height: RangeSpec
     water_cut_width: RangeSpec
     enable_water_cut: bool = False
+    enable_round_bread: bool = False
     height_calc_mode: HeightCalcMode = DEFAULT_HEIGHT_CALC_MODE
     enable_bottom_measurement: bool = False
     bottom_params: SectionParams

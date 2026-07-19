@@ -27,6 +27,7 @@
       "max": 48
     },
     "enableWaterCut": false,
+    "enableRoundBread": false,
     "enableBottomMeasurement": true,
     "bottomParams": {
       "batchSize": 3,

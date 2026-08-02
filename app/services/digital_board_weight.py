@@ -1,20 +1,16 @@
 # -*- coding: utf-8 -*-
 """Read net weight and zero a digital weighing board via Modbus RTU.
 
-Aligned with vendor tool「数字传感器通信软件」working capture:
-- TX: 01 03 00 01 00 05 …  (read 5 holding regs from protocol address 0x0001)
-- Default serial: 19200 8N1, slave 0x01
-- Scaled register value is exposed as grams for the app (same numeric display
-  as the vendor tool; if the board is truly calibrated in kg, readings will
-  need an extra ×1000).
+Per module manual「数字主板模块」:
+- Recommended TX: 01 03 00 00 00 04 … (weight + precision + status)
+- Weight regs 0x0000/0x0001: signed 32-bit integer WITHOUT decimal point,
+  high word first (big-endian)
+- Reg 0x0002: decimal precision 0-3 → display = raw / 10^precision
+- Reg 0x0003: status bits
+- Reg 0x0004: write 1 to clear displayed weight
 
-Parsed from the 5-register block (10 bytes):
-- regs 0x0001/0x0002: signed 32-bit weight, high word first
-- reg  0x0003: decimal places 0-3
-- reg  0x0004: status bits
-- reg  0x0005: reserved / unused by us
-
-Zero command (unchanged from module doc): write 1 to holding reg 0x0004.
+Default baud in manual is 9600; field devices may use 19200 after config.
+App treats the scaled display value as grams (unit depends on board calibration).
 """
 
 from __future__ import annotations
@@ -28,9 +24,9 @@ from typing import Any
 DEFAULT_PORT = "COM6"
 DEFAULT_BAUDRATE = 19200
 DEFAULT_SLAVE_ID = 0x01
-# Vendor tool poll: start=0x0001, count=5
-WEIGHT_BLOCK_REGISTER = 0x0001
-WEIGHT_BLOCK_COUNT = 5
+# Manual: start=0x0000, count=4 → 01 03 00 00 00 04
+WEIGHT_BLOCK_REGISTER = 0x0000
+WEIGHT_BLOCK_COUNT = 4
 ZERO_COMMAND_REGISTER = 0x0004
 ZERO_COMMAND_VALUE = 0x0001
 READ_TIMEOUT_S = 2.0
@@ -330,7 +326,7 @@ class DigitalBoardWeightTransmitter:
         raise last_error
 
     def read_net(self, debug: bool = False) -> WeightReading:
-        """Read instantaneous weight; ``value`` matches vendor numeric display (app grams)."""
+        """Read weight/precision/status; ``value`` = raw / 10^precision (app grams)."""
         data = self._read_registers(
             WEIGHT_BLOCK_REGISTER,
             WEIGHT_BLOCK_COUNT,
@@ -338,9 +334,10 @@ class DigitalBoardWeightTransmitter:
         )
         if len(data) < 8:
             raise ValueError(
-                f"expected at least 8 data bytes from weight block, got {len(data)}"
+                f"expected 8 data bytes from weight block, got {len(data)}"
             )
 
+        # Manual: longWei = b0<<24|b1<<16|b2<<8|b3 (signed); then / 10^precision
         raw = parse_be_s32(data[0:4])
         decimal_places = parse_u16(data[4:6])
         status = parse_u16(data[6:8])

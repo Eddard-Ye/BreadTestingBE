@@ -29,7 +29,7 @@ def test_get_sensor_config_creates_defaults(client: TestClient, isolated_sensor_
     data = response.json()
     assert data["temperature"]["enableMock"] is True
     assert data["temperature"]["baudRate"] == "9600"
-    assert data["weight"]["baudRate"] == "9600"
+    assert data["weight"]["baudRate"] == "19200"
     assert data["temperature"]["dataBits"] == "8"
     assert data["temperature"]["calibrationDelta"] == 0
     assert data["weight"]["calibrationDelta"] == 0
@@ -49,7 +49,7 @@ def test_update_sensor_config_requires_auth(client: TestClient) -> None:
         },
         "weight": {
             "port": "COM4",
-            "baudRate": "9600",
+            "baudRate": "19200",
             "dataBits": "8",
             "stopBits": "1",
             "parity": "None",
@@ -72,7 +72,7 @@ def test_update_sensor_config_persists_to_file(client: TestClient, isolated_sens
         },
         "weight": {
             "port": "COM4",
-            "baudRate": "9600",
+            "baudRate": "19200",
             "dataBits": "8",
             "stopBits": "1",
             "parity": "None",
@@ -112,7 +112,7 @@ def test_read_temperature_uses_hardware_when_mock_disabled(
         },
         "weight": {
             "port": "COM4",
-            "baudRate": "9600",
+            "baudRate": "19200",
             "dataBits": "8",
             "stopBits": "1",
             "parity": "None",
@@ -151,7 +151,7 @@ def test_read_temperature_applies_calibration_delta(
         },
         "weight": {
             "port": "COM4",
-            "baudRate": "9600",
+            "baudRate": "19200",
             "dataBits": "8",
             "stopBits": "1",
             "parity": "None",
@@ -188,7 +188,7 @@ def test_update_sensor_config_persists_temperature_calibration_delta(
         },
         "weight": {
             "port": "COM4",
-            "baudRate": "9600",
+            "baudRate": "19200",
             "dataBits": "8",
             "stopBits": "1",
             "parity": "None",
@@ -437,7 +437,7 @@ def test_read_weight_uses_grams_directly(monkeypatch) -> None:
 
     config = SerialPortConfig(
         port="COM3",
-        baud_rate="9600",
+        baud_rate="19200",
         data_bits="8",
         stop_bits="1",
         parity="None",
@@ -476,7 +476,7 @@ def test_read_weight_subtracts_persisted_tare(monkeypatch) -> None:
 
     config = SerialPortConfig(
         port="COM3",
-        baud_rate="9600",
+        baud_rate="19200",
         data_bits="8",
         stop_bits="1",
         parity="None",
@@ -515,7 +515,7 @@ def test_tare_weight_hw_persists_app_offset(monkeypatch) -> None:
 
     config = SerialPortConfig(
         port="COM3",
-        baud_rate="9600",
+        baud_rate="19200",
         data_bits="8",
         stop_bits="1",
         parity="None",
@@ -571,7 +571,7 @@ def test_zero_weight_hw_clears_hardware_and_tare(monkeypatch) -> None:
 
     config = SerialPortConfig(
         port="COM3",
-        baud_rate="9600",
+        baud_rate="19200",
         data_bits="8",
         stop_bits="1",
         parity="None",

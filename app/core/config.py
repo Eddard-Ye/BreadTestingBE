@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     SENSOR_CONFIG_PATH: str = "data/sensor_config.json"
     STREAM_CAPTURE_CONFIG_PATH: str = "data/stream_capture_config.json"
+    WEIGHT_TARE_PATH: str = "data/weight_tare.json"
 
     # capture_2d_stream 默认值；首次运行会写入 STREAM_CAPTURE_CONFIG_PATH
     STREAM_CAPTURE_HOST: str = "10.172.158.124"

@@ -29,7 +29,7 @@ def test_get_sensor_config_creates_defaults(client: TestClient, isolated_sensor_
     data = response.json()
     assert data["temperature"]["enableMock"] is True
     assert data["temperature"]["baudRate"] == "9600"
-    assert data["weight"]["baudRate"] == "38400"
+    assert data["weight"]["baudRate"] == "9600"
     assert data["temperature"]["dataBits"] == "8"
     assert data["temperature"]["calibrationDelta"] == 0
     assert data["weight"]["calibrationDelta"] == 0
@@ -49,7 +49,7 @@ def test_update_sensor_config_requires_auth(client: TestClient) -> None:
         },
         "weight": {
             "port": "COM4",
-            "baudRate": "38400",
+            "baudRate": "9600",
             "dataBits": "8",
             "stopBits": "1",
             "parity": "None",
@@ -72,7 +72,7 @@ def test_update_sensor_config_persists_to_file(client: TestClient, isolated_sens
         },
         "weight": {
             "port": "COM4",
-            "baudRate": "38400",
+            "baudRate": "9600",
             "dataBits": "8",
             "stopBits": "1",
             "parity": "None",
@@ -112,7 +112,7 @@ def test_read_temperature_uses_hardware_when_mock_disabled(
         },
         "weight": {
             "port": "COM4",
-            "baudRate": "38400",
+            "baudRate": "9600",
             "dataBits": "8",
             "stopBits": "1",
             "parity": "None",
@@ -151,7 +151,7 @@ def test_read_temperature_applies_calibration_delta(
         },
         "weight": {
             "port": "COM4",
-            "baudRate": "38400",
+            "baudRate": "9600",
             "dataBits": "8",
             "stopBits": "1",
             "parity": "None",
@@ -188,7 +188,7 @@ def test_update_sensor_config_persists_temperature_calibration_delta(
         },
         "weight": {
             "port": "COM4",
-            "baudRate": "38400",
+            "baudRate": "9600",
             "dataBits": "8",
             "stopBits": "1",
             "parity": "None",
@@ -399,14 +399,26 @@ def test_read_temperature_hw_read_failure_clears_session(monkeypatch) -> None:
     sensor_service.invalidate_sensor_sessions()
 
 
-def test_read_weight_converts_kg_to_g(monkeypatch) -> None:
+def _patch_digital_board(monkeypatch, fake_cls) -> None:
     import sys
     from types import ModuleType
 
+    fake_module = ModuleType("app.services.digital_board_weight")
+    fake_module.DigitalBoardWeightTransmitter = fake_cls
+    monkeypatch.setitem(sys.modules, "app.services.digital_board_weight", fake_module)
+    monkeypatch.setattr(
+        "app.services.sensor_service._serial_available",
+        lambda: True,
+    )
+
+
+def test_read_weight_uses_grams_directly(monkeypatch) -> None:
     from app.services import sensor_service
     from app.schemas.sensor import SerialPortConfig
+    from app.services.weight_tare_store import clear_tare_offset_g
 
     sensor_service.invalidate_sensor_sessions()
+    clear_tare_offset_g()
 
     class FakeWeightSensor:
         def __init__(self, **_kwargs) -> None:
@@ -419,19 +431,13 @@ def test_read_weight_converts_kg_to_g(monkeypatch) -> None:
             pass
 
         def read_net(self):
-            return type("Reading", (), {"value": 1.2})()
+            return type("Reading", (), {"value": 120.5})()
 
-    fake_module = ModuleType("app.services.km11_weight")
-    fake_module.Km11WeightTransmitter = FakeWeightSensor
-    monkeypatch.setitem(sys.modules, "app.services.km11_weight", fake_module)
-    monkeypatch.setattr(
-        "app.services.sensor_service._serial_available",
-        lambda: True,
-    )
+    _patch_digital_board(monkeypatch, FakeWeightSensor)
 
     config = SerialPortConfig(
         port="COM3",
-        baud_rate="38400",
+        baud_rate="9600",
         data_bits="8",
         stop_bits="1",
         parity="None",
@@ -440,19 +446,18 @@ def test_read_weight_converts_kg_to_g(monkeypatch) -> None:
 
     reading = sensor_service._read_weight_hw(config)
 
-    assert reading == sensor_service.SensorReading(value=1200.0, connected=True)
+    assert reading == sensor_service.SensorReading(value=120.5, connected=True)
 
     sensor_service.invalidate_sensor_sessions()
 
 
-def test_read_weight_returns_negative_kg_as_negative_g(monkeypatch) -> None:
-    import sys
-    from types import ModuleType
-
+def test_read_weight_subtracts_persisted_tare(monkeypatch) -> None:
     from app.services import sensor_service
     from app.schemas.sensor import SerialPortConfig
+    from app.services.weight_tare_store import set_tare_offset_g
 
     sensor_service.invalidate_sensor_sessions()
+    set_tare_offset_g(50.0)
 
     class FakeWeightSensor:
         def __init__(self, **_kwargs) -> None:
@@ -465,19 +470,13 @@ def test_read_weight_returns_negative_kg_as_negative_g(monkeypatch) -> None:
             pass
 
         def read_net(self):
-            return type("Reading", (), {"value": -0.3})()
+            return type("Reading", (), {"value": 150.0})()
 
-    fake_module = ModuleType("app.services.km11_weight")
-    fake_module.Km11WeightTransmitter = FakeWeightSensor
-    monkeypatch.setitem(sys.modules, "app.services.km11_weight", fake_module)
-    monkeypatch.setattr(
-        "app.services.sensor_service._serial_available",
-        lambda: True,
-    )
+    _patch_digital_board(monkeypatch, FakeWeightSensor)
 
     config = SerialPortConfig(
         port="COM3",
-        baud_rate="38400",
+        baud_rate="9600",
         data_bits="8",
         stop_bits="1",
         parity="None",
@@ -486,25 +485,22 @@ def test_read_weight_returns_negative_kg_as_negative_g(monkeypatch) -> None:
 
     reading = sensor_service._read_weight_hw(config)
 
-    assert reading == sensor_service.SensorReading(value=-300.0, connected=True)
+    assert reading == sensor_service.SensorReading(value=100.0, connected=True)
 
     sensor_service.invalidate_sensor_sessions()
 
 
-def test_tare_weight_hw_calls_sensor_tare(monkeypatch) -> None:
-    import sys
-    from types import ModuleType
-
+def test_tare_weight_hw_persists_app_offset(monkeypatch) -> None:
     from app.services import sensor_service
     from app.schemas.sensor import SerialPortConfig
+    from app.services.weight_tare_store import get_tare_offset_g
 
     sensor_service.invalidate_sensor_sessions()
-    tare_calls = 0
 
     class FakeWeightSensor:
         def __init__(self, **_kwargs) -> None:
             self._ser = type("Ser", (), {"is_open": True})()
-            self._kg = 0.5
+            self._g = 85.2
 
         def open(self) -> None:
             pass
@@ -512,25 +508,14 @@ def test_tare_weight_hw_calls_sensor_tare(monkeypatch) -> None:
         def close(self) -> None:
             pass
 
-        def tare(self) -> None:
-            nonlocal tare_calls
-            tare_calls += 1
-            self._kg = 0.0
-
         def read_net(self):
-            return type("Reading", (), {"value": self._kg})()
+            return type("Reading", (), {"value": self._g})()
 
-    fake_module = ModuleType("app.services.km11_weight")
-    fake_module.Km11WeightTransmitter = FakeWeightSensor
-    monkeypatch.setitem(sys.modules, "app.services.km11_weight", fake_module)
-    monkeypatch.setattr(
-        "app.services.sensor_service._serial_available",
-        lambda: True,
-    )
+    _patch_digital_board(monkeypatch, FakeWeightSensor)
 
     config = SerialPortConfig(
         port="COM3",
-        baud_rate="38400",
+        baud_rate="9600",
         data_bits="8",
         stop_bits="1",
         parity="None",
@@ -539,8 +524,8 @@ def test_tare_weight_hw_calls_sensor_tare(monkeypatch) -> None:
 
     reading = sensor_service._tare_weight_hw(config)
 
-    assert tare_calls == 1
     assert reading == sensor_service.SensorReading(value=0.0, connected=True)
+    assert get_tare_offset_g() == 85.2
 
     sensor_service.invalidate_sensor_sessions()
 
@@ -553,20 +538,19 @@ def test_post_weight_tare_mock(client: TestClient) -> None:
     assert data["connected"] is True
 
 
-def test_zero_weight_hw_calls_sensor_zero(monkeypatch) -> None:
-    import sys
-    from types import ModuleType
-
+def test_zero_weight_hw_clears_hardware_and_tare(monkeypatch) -> None:
     from app.services import sensor_service
     from app.schemas.sensor import SerialPortConfig
+    from app.services.weight_tare_store import get_tare_offset_g, set_tare_offset_g
 
     sensor_service.invalidate_sensor_sessions()
+    set_tare_offset_g(40.0)
     zero_calls = 0
 
     class FakeWeightSensor:
         def __init__(self, **_kwargs) -> None:
             self._ser = type("Ser", (), {"is_open": True})()
-            self._kg = 0.5
+            self._g = 40.0
 
         def open(self) -> None:
             pass
@@ -577,23 +561,17 @@ def test_zero_weight_hw_calls_sensor_zero(monkeypatch) -> None:
         def zero(self):
             nonlocal zero_calls
             zero_calls += 1
-            self._kg = 0.0
-            return type("Reading", (), {"value": self._kg, "raw": 0, "decimal_places": 1})()
+            self._g = 0.0
+            return type("Reading", (), {"value": self._g})()
 
         def read_net(self):
-            return type("Reading", (), {"value": self._kg})()
+            return type("Reading", (), {"value": self._g})()
 
-    fake_module = ModuleType("app.services.km11_weight")
-    fake_module.Km11WeightTransmitter = FakeWeightSensor
-    monkeypatch.setitem(sys.modules, "app.services.km11_weight", fake_module)
-    monkeypatch.setattr(
-        "app.services.sensor_service._serial_available",
-        lambda: True,
-    )
+    _patch_digital_board(monkeypatch, FakeWeightSensor)
 
     config = SerialPortConfig(
         port="COM3",
-        baud_rate="38400",
+        baud_rate="9600",
         data_bits="8",
         stop_bits="1",
         parity="None",
@@ -603,6 +581,7 @@ def test_zero_weight_hw_calls_sensor_zero(monkeypatch) -> None:
     reading = sensor_service._zero_weight_hw(config)
 
     assert zero_calls == 1
+    assert get_tare_offset_g() == 0.0
     assert reading == sensor_service.SensorReading(value=0.0, connected=True)
 
     sensor_service.invalidate_sensor_sessions()

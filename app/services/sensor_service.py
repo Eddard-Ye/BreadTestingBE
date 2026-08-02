@@ -12,8 +12,6 @@ _HW_DEFAULTS = {
     "weight": {"slave_id": 1, "timeout": 2.0, "retries": 2},
 }
 
-_KG_TO_G = 1000.0
-
 _locks = {
     "temperature": threading.Lock(),
     "weight": threading.Lock(),
@@ -224,12 +222,12 @@ def _with_weight_session(
     operation: Callable[[Any], float],
     precision: int = 1,
 ) -> SensorReading:
-    from app.services.km11_weight import Km11WeightTransmitter
+    from app.services.digital_board_weight import DigitalBoardWeightTransmitter
 
     params = _hw_params(config, "weight")
 
-    def factory() -> Km11WeightTransmitter:
-        return Km11WeightTransmitter(
+    def factory() -> DigitalBoardWeightTransmitter:
+        return DigitalBoardWeightTransmitter(
             port=params["port"],
             baudrate=params["baudrate"],
             slave_id=params["slave_id"],
@@ -240,26 +238,44 @@ def _with_weight_session(
     return _with_hw_session("weight", config, factory, operation, precision)
 
 
+def _raw_weight_g(sensor: Any) -> float:
+    return round(float(sensor.read_net().value), 1)
+
+
+def _display_weight_g(raw_g: float) -> float:
+    from app.services.weight_tare_store import get_tare_offset_g
+
+    return round(raw_g - get_tare_offset_g(), 1)
+
+
 def _read_weight_hw(config: SerialPortConfig) -> SensorReading:
     return _with_weight_session(
         config,
-        lambda sensor: round(sensor.read_net().value * _KG_TO_G, 1),
+        lambda sensor: _display_weight_g(_raw_weight_g(sensor)),
         precision=1,
     )
 
 
 def _tare_weight_hw(config: SerialPortConfig) -> SensorReading:
+    from app.services.weight_tare_store import set_tare_offset_g
+
     def tare_and_read(sensor: Any) -> float:
-        sensor.tare()
-        return round(sensor.read_net().value * _KG_TO_G, 1)
+        # App-layer tare: persist current raw reading as offset (grams).
+        raw_g = _raw_weight_g(sensor)
+        set_tare_offset_g(raw_g)
+        return 0.0
 
     return _with_weight_session(config, tare_and_read, precision=1)
 
 
 def _zero_weight_hw(config: SerialPortConfig) -> SensorReading:
+    from app.services.weight_tare_store import clear_tare_offset_g
+
     def zero_and_read(sensor: Any) -> float:
+        # Hardware clear, then always drop persisted app tare.
         sensor.zero()
-        return round(sensor.read_net().value * _KG_TO_G, 1)
+        clear_tare_offset_g()
+        return _raw_weight_g(sensor)
 
     return _with_weight_session(config, zero_and_read, precision=1)
 
@@ -288,7 +304,7 @@ def read_weight() -> SensorReading:
 
 
 def tare_weight() -> SensorReading:
-    """对重量传感器执行去皮，并返回去皮后的读数（克）。"""
+    """应用层去皮：将当前毛重写入持久化皮重，并返回去皮后读数（克）。"""
     config = get_sensor_config_service().get_config().weight
     if config.enable_mock:
         return _set_mock_weight_baseline(0.0)
@@ -296,7 +312,7 @@ def tare_weight() -> SensorReading:
 
 
 def zero_weight() -> SensorReading:
-    """对重量传感器执行强制回零，并返回回零后的读数（克）。"""
+    """硬件强制回零，并清除持久化皮重，返回回零后读数（克）。"""
     config = get_sensor_config_service().get_config().weight
     if config.enable_mock:
         return _set_mock_weight_baseline(0.0)

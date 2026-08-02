@@ -1,13 +1,20 @@
 # -*- coding: utf-8 -*-
 """Read net weight and zero a digital weighing board via Modbus RTU.
 
-Protocol summary (holding registers, protocol address):
-- 0x0000/0x0001: signed 32-bit weight, high word first (unit depends on calibration; we use g)
-- 0x0002: decimal places 0-3
-- 0x0003: status bits
-- 0x0004: write 1 to clear displayed weight (zero)
+Aligned with vendor tool「数字传感器通信软件」working capture:
+- TX: 01 03 00 01 00 05 …  (read 5 holding regs from protocol address 0x0001)
+- Default serial: 19200 8N1, slave 0x01
+- Scaled register value is exposed as grams for the app (same numeric display
+  as the vendor tool; if the board is truly calibrated in kg, readings will
+  need an extra ×1000).
 
-Default serial: 9600 8N1, slave 0x01.
+Parsed from the 5-register block (10 bytes):
+- regs 0x0001/0x0002: signed 32-bit weight, high word first
+- reg  0x0003: decimal places 0-3
+- reg  0x0004: status bits
+- reg  0x0005: reserved / unused by us
+
+Zero command (unchanged from module doc): write 1 to holding reg 0x0004.
 """
 
 from __future__ import annotations
@@ -16,20 +23,14 @@ import struct
 import sys
 import time
 from dataclasses import dataclass
-from typing import Optional
-
-try:
-    import serial
-except ImportError as exc:
-    raise SystemExit("pyserial is required: pip install pyserial") from exc
-
+from typing import Any
 
 DEFAULT_PORT = "COM6"
-DEFAULT_BAUDRATE = 9600
+DEFAULT_BAUDRATE = 19200
 DEFAULT_SLAVE_ID = 0x01
-WEIGHT_REGISTER = 0x0000
-DECIMAL_REGISTER = 0x0002
-STATUS_REGISTER = 0x0003
+# Vendor tool poll: start=0x0001, count=5
+WEIGHT_BLOCK_REGISTER = 0x0001
+WEIGHT_BLOCK_COUNT = 5
 ZERO_COMMAND_REGISTER = 0x0004
 ZERO_COMMAND_VALUE = 0x0001
 READ_TIMEOUT_S = 2.0
@@ -154,6 +155,7 @@ def parse_u16(data: bytes) -> int:
 
 
 def scale_weight(raw: int, decimal_places: int) -> float:
+    """Scale raw integer by decimal places → device display value."""
     places = max(0, min(3, int(decimal_places)))
     if places <= 0:
         return float(raw)
@@ -161,7 +163,7 @@ def scale_weight(raw: int, decimal_places: int) -> float:
 
 
 def read_modbus_frame(
-    ser: serial.Serial,
+    ser: Any,
     slave_id: int,
     timeout: float,
     function: int = 0x03,
@@ -223,7 +225,7 @@ class DigitalBoardWeightTransmitter:
         self.slave_id = slave_id
         self.timeout = timeout
         self.retries = max(0, retries)
-        self._ser: Optional[serial.Serial] = None
+        self._ser: Any = None
         self._last_command_at = 0.0
 
     def __enter__(self) -> "DigitalBoardWeightTransmitter":
@@ -236,6 +238,11 @@ class DigitalBoardWeightTransmitter:
     def open(self) -> None:
         if self._ser and self._ser.is_open:
             return
+
+        try:
+            import serial
+        except ImportError as exc:
+            raise RuntimeError("pyserial is required: pip install pyserial") from exc
 
         self._ser = serial.Serial(
             port=self.port,
@@ -323,21 +330,20 @@ class DigitalBoardWeightTransmitter:
         raise last_error
 
     def read_net(self, debug: bool = False) -> WeightReading:
-        """Read weight (g), decimal places, and status in one Modbus transaction when possible."""
-        data = self._read_registers(WEIGHT_REGISTER, 4, debug=debug)
+        """Read instantaneous weight; ``value`` matches vendor numeric display (app grams)."""
+        data = self._read_registers(
+            WEIGHT_BLOCK_REGISTER,
+            WEIGHT_BLOCK_COUNT,
+            debug=debug,
+        )
         if len(data) < 8:
-            # Fallback: split reads
-            weight_data = self._read_registers(WEIGHT_REGISTER, 2, debug=debug)
-            decimal_data = self._read_registers(DECIMAL_REGISTER, 1, debug=debug)
-            status_data = self._read_registers(STATUS_REGISTER, 1, debug=debug)
-        else:
-            weight_data = data[0:4]
-            decimal_data = data[4:6]
-            status_data = data[6:8]
+            raise ValueError(
+                f"expected at least 8 data bytes from weight block, got {len(data)}"
+            )
 
-        raw = parse_be_s32(weight_data)
-        decimal_places = parse_u16(decimal_data)
-        status = parse_u16(status_data)
+        raw = parse_be_s32(data[0:4])
+        decimal_places = parse_u16(data[4:6])
+        status = parse_u16(data[6:8])
 
         return WeightReading(
             raw=raw,

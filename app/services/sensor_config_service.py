@@ -23,7 +23,7 @@ def _default_serial_config(baud_rate: str) -> SerialPortConfig:
 def default_sensor_config() -> SensorConfigResponse:
     return SensorConfigResponse(
         temperature=_default_serial_config("9600"),
-        weight=_default_serial_config("9600"),
+        weight=_default_serial_config("19200"),
     )
 
 
@@ -53,7 +53,7 @@ def _migrate_serial_entry(raw: dict, default_baud: str) -> dict:
 def _migrate_config_raw(raw: dict) -> dict:
     defaults = {
         "temperature": "9600",
-        "weight": "9600",
+        "weight": "19200",
     }
     migrated: dict = {}
     for key, baud in defaults.items():

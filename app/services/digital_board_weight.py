@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 """Read net weight and zero a digital weighing board via Modbus RTU.
 
-Per module manual「数字主板模块」:
-- Recommended TX: 01 03 00 00 00 04 … (weight + precision + status)
-- Weight regs 0x0000/0x0001: signed 32-bit integer WITHOUT decimal point,
-  high word first (big-endian)
-- Reg 0x0002: decimal precision 0-3 → display = raw / 10^precision
-- Reg 0x0003: status bits
-- Reg 0x0004: write 1 to clear displayed weight
+Field-proven with vendor tool「数字传感器通信软件」:
+- TX: 01 03 00 01 00 05 … (read 5 holding regs from protocol address 0x0001)
+- RX data (10 bytes): weight is the 24-bit big-endian integer at bytes [5:8]
+  e.g. … 8A | 01 70 26 | 8A 01 → 0x017026 = 94246 → 942.46 (2 decimal places)
+- Display is then rounded to 0.05 g (e.g. 942.46→942.45, 942.39→942.40)
+- Zero: write 1 to holding reg 0x0004
 
-Default baud in manual is 9600; field devices may use 19200 after config.
-App treats the scaled display value as grams (unit depends on board calibration).
+Default baud in manual is 9600; field devices commonly use 19200 after config.
 """
 
 from __future__ import annotations
@@ -24,9 +22,11 @@ from typing import Any
 DEFAULT_PORT = "COM6"
 DEFAULT_BAUDRATE = 19200
 DEFAULT_SLAVE_ID = 0x01
-# Manual: start=0x0000, count=4 → 01 03 00 00 00 04
-WEIGHT_BLOCK_REGISTER = 0x0000
-WEIGHT_BLOCK_COUNT = 4
+# Field poll: start=0x0001, count=5 → 01 03 00 01 00 05
+WEIGHT_BLOCK_REGISTER = 0x0001
+WEIGHT_BLOCK_COUNT = 5
+WEIGHT_RAW_OFFSET = 5  # 24-bit BE weight integer inside 10-byte payload
+WEIGHT_DECIMAL_PLACES = 2
 ZERO_COMMAND_REGISTER = 0x0004
 ZERO_COMMAND_VALUE = 0x0001
 READ_TIMEOUT_S = 2.0
@@ -158,6 +158,56 @@ def scale_weight(raw: int, decimal_places: int) -> float:
     return raw / float(10**places)
 
 
+def parse_weight_raw_from_payload(data: bytes) -> int:
+    """Extract signed weight integer from a 5-register (10-byte) read payload."""
+    if len(data) < WEIGHT_RAW_OFFSET + 3:
+        raise ValueError(
+            f"expected at least {WEIGHT_RAW_OFFSET + 3} data bytes, got {len(data)}"
+        )
+    raw = (
+        (data[WEIGHT_RAW_OFFSET] << 16)
+        | (data[WEIGHT_RAW_OFFSET + 1] << 8)
+        | data[WEIGHT_RAW_OFFSET + 2]
+    )
+    # Sign-extend 24-bit value.
+    if raw & 0x800000:
+        raw -= 0x1000000
+    return raw
+
+
+def round_weight_g(value: float) -> float:
+    """Round reading to nearest 0.05 g (四舍五入).
+
+    Examples: 942.46 → 942.45, 942.39 → 942.40.
+    """
+    from decimal import ROUND_HALF_UP, Decimal
+
+    step = Decimal("0.05")
+    quantized = (Decimal(str(value)) / step).quantize(
+        Decimal("1"),
+        rounding=ROUND_HALF_UP,
+    )
+    return float(quantized * step)
+
+
+def decode_weight_payload(data: bytes) -> WeightReading:
+    """Decode RX payload from ``01 03 00 01 00 05`` into a weight reading."""
+    if len(data) < 10:
+        raise ValueError(f"expected 10 data bytes from weight block, got {len(data)}")
+
+    raw = parse_weight_raw_from_payload(data)
+    decimal_places = WEIGHT_DECIMAL_PLACES
+    status = parse_u16(data[8:10])
+    value = round_weight_g(scale_weight(raw, decimal_places))
+
+    return WeightReading(
+        raw=raw,
+        decimal_places=decimal_places,
+        value=value,
+        status=status,
+    )
+
+
 def read_modbus_frame(
     ser: Any,
     slave_id: int,
@@ -271,7 +321,7 @@ class DigitalBoardWeightTransmitter:
             raise RuntimeError("serial port is not open")
 
         request = build_read_holding_request(self.slave_id, register, count)
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         for attempt in range(self.retries + 1):
             try:
@@ -300,7 +350,7 @@ class DigitalBoardWeightTransmitter:
             raise RuntimeError("serial port is not open")
 
         request = build_write_single_request(self.slave_id, register, value)
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         for attempt in range(self.retries + 1):
             try:
@@ -326,28 +376,13 @@ class DigitalBoardWeightTransmitter:
         raise last_error
 
     def read_net(self, debug: bool = False) -> WeightReading:
-        """Read weight/precision/status; ``value`` = raw / 10^precision (app grams)."""
+        """Read weight block; ``value`` is grams after scaling and display rounding."""
         data = self._read_registers(
             WEIGHT_BLOCK_REGISTER,
             WEIGHT_BLOCK_COUNT,
             debug=debug,
         )
-        if len(data) < 8:
-            raise ValueError(
-                f"expected 8 data bytes from weight block, got {len(data)}"
-            )
-
-        # Manual: longWei = b0<<24|b1<<16|b2<<8|b3 (signed); then / 10^precision
-        raw = parse_be_s32(data[0:4])
-        decimal_places = parse_u16(data[4:6])
-        status = parse_u16(data[6:8])
-
-        return WeightReading(
-            raw=raw,
-            decimal_places=decimal_places,
-            value=scale_weight(raw, decimal_places),
-            status=status,
-        )
+        return decode_weight_payload(data)
 
     def read(self, debug: bool = False) -> WeightReading:
         return self.read_net(debug=debug)

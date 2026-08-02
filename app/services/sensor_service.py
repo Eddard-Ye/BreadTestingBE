@@ -220,7 +220,7 @@ def _read_temperature_hw(config: SerialPortConfig) -> SensorReading:
 def _with_weight_session(
     config: SerialPortConfig,
     operation: Callable[[Any], float],
-    precision: int = 1,
+    precision: int = 2,
 ) -> SensorReading:
     from app.services.digital_board_weight import DigitalBoardWeightTransmitter
 
@@ -239,20 +239,33 @@ def _with_weight_session(
 
 
 def _raw_weight_g(sensor: Any) -> float:
-    return round(float(sensor.read_net().value), 1)
+    # Driver already rounds to 0.05 g; do not re-round to 0.1 g here.
+    return float(sensor.read_net().value)
+
+
+def _round_weight_g(value: float) -> float:
+    """Round to nearest 0.05 g (keep in sync with digital_board_weight.round_weight_g)."""
+    from decimal import ROUND_HALF_UP, Decimal
+
+    step = Decimal("0.05")
+    quantized = (Decimal(str(value)) / step).quantize(
+        Decimal("1"),
+        rounding=ROUND_HALF_UP,
+    )
+    return float(quantized * step)
 
 
 def _display_weight_g(raw_g: float) -> float:
     from app.services.weight_tare_store import get_tare_offset_g
 
-    return round(raw_g - get_tare_offset_g(), 1)
+    return _round_weight_g(raw_g - get_tare_offset_g())
 
 
 def _read_weight_hw(config: SerialPortConfig) -> SensorReading:
     return _with_weight_session(
         config,
         lambda sensor: _display_weight_g(_raw_weight_g(sensor)),
-        precision=1,
+        precision=2,
     )
 
 
@@ -265,7 +278,7 @@ def _tare_weight_hw(config: SerialPortConfig) -> SensorReading:
         set_tare_offset_g(raw_g)
         return 0.0
 
-    return _with_weight_session(config, tare_and_read, precision=1)
+    return _with_weight_session(config, tare_and_read, precision=2)
 
 
 def _zero_weight_hw(config: SerialPortConfig) -> SensorReading:
@@ -277,7 +290,7 @@ def _zero_weight_hw(config: SerialPortConfig) -> SensorReading:
         clear_tare_offset_g()
         return _raw_weight_g(sensor)
 
-    return _with_weight_session(config, zero_and_read, precision=1)
+    return _with_weight_session(config, zero_and_read, precision=2)
 
 
 def read_temperature() -> SensorReading:

@@ -51,7 +51,7 @@ def test_capture_measurement_success(client: TestClient, monkeypatch) -> None:
                 "name": "测试配方-成品-1",
                 "height": "0.0mm",
                 "temperature": "61.7",
-                "weight": "90.57g",
+                "weight": "90.6g",
                 "water_cut": True,
                 "height_calc_mode": "peak",
                 "height_scale": 1.0,
@@ -68,7 +68,7 @@ def test_capture_measurement_success(client: TestClient, monkeypatch) -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["temperature"] == "61.7"
-    assert data["weight"] == "90.57"
+    assert data["weight"] == "90.6"
     assert data["height"] == "27.2"
     assert data["length"] == "101.9"
     assert data["width"] == "51.2"

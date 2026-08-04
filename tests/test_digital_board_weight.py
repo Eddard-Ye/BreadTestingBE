@@ -17,11 +17,11 @@ def test_weight_poll_frame_matches_field_capture() -> None:
 
 
 def test_decode_captured_942_37_frame() -> None:
-    # … 01 70 1D … → 942.37 → rounded to 0.05g → 942.35
+    # … 01 70 1D … → 942.37 → rounded to 0.1g → 942.4
     data = bytes.fromhex("00 D7 00 5B 8A 01 70 1D 8A 01")
     reading = decode_weight_payload(data)
     assert reading.raw == 94237
-    assert reading.value == 942.35
+    assert reading.value == 942.4
 
 
 def test_decode_captured_942_39_frame() -> None:
@@ -35,11 +35,11 @@ def test_decode_captured_942_46_frame() -> None:
     data = bytes.fromhex("00 D7 00 5B 8A 01 70 26 8A 01")
     reading = decode_weight_payload(data)
     assert reading.raw == 94246
-    assert reading.value == 942.45
+    assert reading.value == 942.5
 
 
-def test_round_weight_to_0_05g() -> None:
-    assert round_weight_g(942.46) == 942.45
+def test_round_weight_to_0_1g() -> None:
+    assert round_weight_g(942.46) == 942.5
     assert round_weight_g(942.39) == 942.4
-    assert round_weight_g(942.375) == 942.4
-    assert round_weight_g(942.325) == 942.35
+    assert round_weight_g(942.35) == 942.4
+    assert round_weight_g(942.34) == 942.3

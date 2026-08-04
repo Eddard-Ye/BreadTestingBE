@@ -220,7 +220,7 @@ def _read_temperature_hw(config: SerialPortConfig) -> SensorReading:
 def _with_weight_session(
     config: SerialPortConfig,
     operation: Callable[[Any], float],
-    precision: int = 2,
+    precision: int = 1,
 ) -> SensorReading:
     from app.services.digital_board_weight import DigitalBoardWeightTransmitter
 
@@ -239,20 +239,13 @@ def _with_weight_session(
 
 
 def _raw_weight_g(sensor: Any) -> float:
-    # Driver already rounds to 0.05 g; do not re-round to 0.1 g here.
+    # Driver already rounds to 0.1 g.
     return float(sensor.read_net().value)
 
 
 def _round_weight_g(value: float) -> float:
-    """Round to nearest 0.05 g (keep in sync with digital_board_weight.round_weight_g)."""
-    from decimal import ROUND_HALF_UP, Decimal
-
-    step = Decimal("0.05")
-    quantized = (Decimal(str(value)) / step).quantize(
-        Decimal("1"),
-        rounding=ROUND_HALF_UP,
-    )
-    return float(quantized * step)
+    """Round to nearest 0.1 g (keep in sync with digital_board_weight.round_weight_g)."""
+    return round(float(value) + 1e-9, 1)
 
 
 def _display_weight_g(raw_g: float) -> float:
@@ -265,7 +258,7 @@ def _read_weight_hw(config: SerialPortConfig) -> SensorReading:
     return _with_weight_session(
         config,
         lambda sensor: _display_weight_g(_raw_weight_g(sensor)),
-        precision=2,
+        precision=1,
     )
 
 
@@ -278,7 +271,7 @@ def _tare_weight_hw(config: SerialPortConfig) -> SensorReading:
         set_tare_offset_g(raw_g)
         return 0.0
 
-    return _with_weight_session(config, tare_and_read, precision=2)
+    return _with_weight_session(config, tare_and_read, precision=1)
 
 
 def _zero_weight_hw(config: SerialPortConfig) -> SensorReading:
@@ -290,7 +283,7 @@ def _zero_weight_hw(config: SerialPortConfig) -> SensorReading:
         clear_tare_offset_g()
         return _raw_weight_g(sensor)
 
-    return _with_weight_session(config, zero_and_read, precision=2)
+    return _with_weight_session(config, zero_and_read, precision=1)
 
 
 def read_temperature() -> SensorReading:

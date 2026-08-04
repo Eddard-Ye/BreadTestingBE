@@ -5,7 +5,7 @@ Field-proven with vendor tool「数字传感器通信软件」:
 - TX: 01 03 00 01 00 05 … (read 5 holding regs from protocol address 0x0001)
 - RX data (10 bytes): weight is the 24-bit big-endian integer at bytes [5:8]
   e.g. … 8A | 01 70 26 | 8A 01 → 0x017026 = 94246 → 942.46 (2 decimal places)
-- Display is then rounded to 0.05 g (e.g. 942.46→942.45, 942.39→942.40)
+- Display is then rounded to 0.1 g (e.g. 942.46→942.5, 942.39→942.4)
 - Zero: write 1 to holding reg 0x0004
 
 Default baud in manual is 9600; field devices commonly use 19200 after config.
@@ -176,18 +176,11 @@ def parse_weight_raw_from_payload(data: bytes) -> int:
 
 
 def round_weight_g(value: float) -> float:
-    """Round reading to nearest 0.05 g (四舍五入).
+    """Round reading to nearest 0.1 g (四舍五入).
 
-    Examples: 942.46 → 942.45, 942.39 → 942.40.
+    Examples: 942.46 → 942.5, 942.39 → 942.4.
     """
-    from decimal import ROUND_HALF_UP, Decimal
-
-    step = Decimal("0.05")
-    quantized = (Decimal(str(value)) / step).quantize(
-        Decimal("1"),
-        rounding=ROUND_HALF_UP,
-    )
-    return float(quantized * step)
+    return round(float(value) + 1e-9, 1)
 
 
 def decode_weight_payload(data: bytes) -> WeightReading:

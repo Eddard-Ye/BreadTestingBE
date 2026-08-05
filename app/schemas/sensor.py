@@ -21,6 +21,7 @@ class SerialPortConfig(BaseModel):
     parity: str = Field(default="None", min_length=1, max_length=16)
     enable_mock: bool = True
     calibration_delta: float = 0.0
+    smart_calibration_enabled: bool = False
 
 
 class SensorConfigResponse(BaseModel):

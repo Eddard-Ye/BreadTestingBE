@@ -17,8 +17,12 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    from app.services.smart_calibration import get_smart_calibration_service
+
     init_db()
+    get_smart_calibration_service().start()
     yield
+    get_smart_calibration_service().stop()
 
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG, lifespan=lifespan)

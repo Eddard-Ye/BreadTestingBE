@@ -47,6 +47,7 @@ def _migrate_serial_entry(raw: dict, default_baud: str) -> dict:
         "parity": raw.get("parity", "None"),
         "enableMock": raw.get("enableMock", True),
         "calibrationDelta": float(raw.get("calibrationDelta", 0) or 0),
+        "smartCalibrationEnabled": raw.get("smartCalibrationEnabled", False),
     }
 
 

@@ -36,6 +36,7 @@ class MeasurementBatchCreate(BaseModel):
 
 class MeasurementResponse(MeasurementBase):
     id: str
+    batch_id: int | None = None
     recorded_at: datetime
 
 

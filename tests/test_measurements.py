@@ -47,6 +47,8 @@ def test_create_batch_and_list_measurement(client: TestClient) -> None:
     assert create.status_code == 201
     created = create.json()
     assert len(created) == 2
+    assert created[0]["batchId"] == 1
+    assert created[0]["batchId"] == created[1]["batchId"]
 
     list_all = client.get("/api/v1/measurements")
     assert list_all.status_code == 200
@@ -187,7 +189,7 @@ def test_export_measurements_xlsx(client: TestClient) -> None:
 
     response = client.get(
         "/api/v1/measurements/export",
-        params={"recipeId": recipe_id, "recordType": "product"},
+        params={"recipeId": recipe_id},
     )
     assert response.status_code == 200
     assert response.headers["content-type"].startswith(
@@ -197,9 +199,34 @@ def test_export_measurements_xlsx(client: TestClient) -> None:
     assert response.headers["content-disposition"].endswith('.xlsx"')
 
     workbook = load_workbook(BytesIO(response.content))
-    worksheet = workbook.active
-    assert worksheet.max_row == 13  # header + 12 rows
-    assert [cell.value for cell in worksheet[1]][:2] == ["名称", "温度(°C)"]
+    assert workbook.sheetnames[0] == "底稿"
+    assert "成品-温度" in workbook.sheetnames
+    product_temperature = workbook["成品-温度"]
+    assert product_temperature.max_row == 18  # header + 1 batch row + blank + stats table
+    assert [product_temperature.cell(row=1, column=col).value for col in range(1, 16)] == [
+        "批次号",
+        "开始时间",
+        "温度1",
+        "温度2",
+        "温度3",
+        "温度4",
+        "温度5",
+        "温度6",
+        "温度7",
+        "温度8",
+        "温度9",
+        "温度10",
+        "温度11",
+        "温度12",
+        "单批温度",
+    ]
+    data_row = [product_temperature.cell(row=2, column=col).value for col in range(1, 16)]
+    assert data_row[0] == 1
+    assert isinstance(data_row[1], str) and data_row[1].count("/") == 2
+    assert data_row[2:14] == ["24.5"] * 12
+    assert data_row[14] == 24.5 * 12
+    assert product_temperature.cell(row=4, column=17).value == "公差上限 USL"
+    assert str(product_temperature.cell(row=8, column=19).value).startswith("=AVERAGE(")
 
 
 def test_export_measurements_respects_time_filter(client: TestClient) -> None:
@@ -223,7 +250,6 @@ def test_export_measurements_respects_time_filter(client: TestClient) -> None:
         "/api/v1/measurements/export",
         params={
             "recipeId": recipe_id,
-            "recordType": "product",
             "startTime": "2026-06-22T16:10:00",
             "endTime": "2026-06-22T18:10:59",
         },
@@ -234,4 +260,4 @@ def test_export_measurements_respects_time_filter(client: TestClient) -> None:
     from openpyxl import load_workbook
 
     workbook = load_workbook(BytesIO(response.content))
-    assert workbook.active.max_row == 2  # header + 1 row
+    assert workbook["成品-温度"].max_row == 18  # header + 1 row + blank + stats table

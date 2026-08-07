@@ -9,8 +9,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.measurement import MeasurementRecord
+from app.models.measurement_batch import MeasurementBatch
 from app.models.recipe import Recipe
 from app.schemas.measurement import MeasurementCreate, MeasurementResponse
+from app.services.measurement_batch_backfill import next_batch_seq
 
 LOCAL_TZ = ZoneInfo("Asia/Shanghai")
 
@@ -125,12 +127,23 @@ class MeasurementService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="配方不存在")
 
         saved_rows: list[MeasurementRecord] = []
+        record_type = records[0].record_type
+        batch_seq = next_batch_seq(self.db, recipe_id, record_type)
+        batch = MeasurementBatch(
+            recipe_id=recipe_id,
+            record_type=record_type,
+            batch_seq=batch_seq,
+        )
+        self.db.add(batch)
+        self.db.flush()
+
         for payload in records:
             recorded_at = payload.recorded_at or datetime.now(LOCAL_TZ)
             recorded_at = self._to_local_naive(recorded_at)
 
             row = MeasurementRecord(
                 id=str(uuid.uuid4()),
+                batch_id=batch.id,
                 recipe_id=payload.recipe_id,
                 record_type=payload.record_type,
                 slot_index=payload.slot_index,
@@ -154,8 +167,10 @@ class MeasurementService:
 
     @staticmethod
     def _to_response(row: MeasurementRecord) -> MeasurementResponse:
+        batch_number = row.batch.batch_seq if row.batch is not None else None
         return MeasurementResponse(
             id=row.id,
+            batch_id=batch_number,
             recipe_id=row.recipe_id,
             record_type=row.record_type,
             slot_index=row.slot_index,

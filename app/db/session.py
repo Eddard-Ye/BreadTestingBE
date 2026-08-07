@@ -65,7 +65,12 @@ def init_db() -> None:
     from sqlalchemy import inspect, text
 
     from app.models.measurement import MeasurementRecord  # noqa: F401
+    from app.models.measurement_batch import MeasurementBatch  # noqa: F401
     from app.models.recipe import Recipe  # noqa: F401
+    from app.services.measurement_batch_backfill import (
+        backfill_measurement_batch_ids,
+        rebuild_measurement_batch_ids,
+    )
 
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
@@ -75,18 +80,77 @@ def init_db() -> None:
         return
 
     columns = {column["name"] for column in inspector.get_columns("measurement_records")}
-    if "preview_name" in columns:
-        return
 
-    with engine.begin() as connection:
-        if engine.dialect.name == "mysql":
-            connection.execute(
-                text(
-                    "ALTER TABLE measurement_records "
-                    "ADD COLUMN preview_name VARCHAR(255) NULL"
+    if "preview_name" not in columns:
+        with engine.begin() as connection:
+            if engine.dialect.name == "mysql":
+                connection.execute(
+                    text(
+                        "ALTER TABLE measurement_records "
+                        "ADD COLUMN preview_name VARCHAR(255) NULL"
+                    )
                 )
-            )
-        else:
-            connection.execute(
-                text("ALTER TABLE measurement_records ADD COLUMN preview_name VARCHAR(255)")
-            )
+            else:
+                connection.execute(
+                    text("ALTER TABLE measurement_records ADD COLUMN preview_name VARCHAR(255)")
+                )
+
+    columns = {column["name"] for column in inspector.get_columns("measurement_records")}
+    if "batch_id" not in columns:
+        with engine.begin() as connection:
+            if engine.dialect.name == "mysql":
+                connection.execute(
+                    text(
+                        "ALTER TABLE measurement_records "
+                        "ADD COLUMN batch_id INT NULL, "
+                        "ADD INDEX ix_measurement_batch_id (batch_id), "
+                        "ADD CONSTRAINT fk_measurement_records_batch_id "
+                        "FOREIGN KEY (batch_id) REFERENCES measurement_batches(id) "
+                        "ON DELETE SET NULL"
+                    )
+                )
+            else:
+                connection.execute(
+                    text("ALTER TABLE measurement_records ADD COLUMN batch_id INTEGER")
+                )
+                connection.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS ix_measurement_batch_id "
+                        "ON measurement_records (batch_id)"
+                    )
+                )
+
+    batch_columns: set[str] = set()
+    if "measurement_batches" in inspector.get_table_names():
+        batch_columns = {
+            column["name"] for column in inspector.get_columns("measurement_batches")
+        }
+
+    needs_batch_rebuild = False
+    if "measurement_batches" in inspector.get_table_names() and "batch_seq" not in batch_columns:
+        with engine.begin() as connection:
+            if engine.dialect.name == "mysql":
+                connection.execute(
+                    text(
+                        "ALTER TABLE measurement_batches "
+                        "ADD COLUMN batch_seq INT NULL"
+                    )
+                )
+            else:
+                connection.execute(
+                    text("ALTER TABLE measurement_batches ADD COLUMN batch_seq INTEGER")
+                )
+        needs_batch_rebuild = True
+
+    session = get_session_factory()()
+    try:
+        if needs_batch_rebuild:
+            rebuild_measurement_batch_ids(session)
+            session.commit()
+        elif backfill_measurement_batch_ids(session):
+            session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()

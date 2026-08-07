@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -10,6 +10,7 @@ class MeasurementRecord(Base):
     __tablename__ = "measurement_records"
     __table_args__ = (
         Index("ix_measurement_recipe_type_time", "recipe_id", "record_type", "recorded_at"),
+        Index("ix_measurement_batch_id", "batch_id"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -20,6 +21,15 @@ class MeasurementRecord(Base):
         nullable=False,
     )
     record_type: Mapped[str] = mapped_column(String(16), index=True, nullable=False)
+    batch_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("measurement_batches.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    batch: Mapped["MeasurementBatch | None"] = relationship(
+        "MeasurementBatch",
+        foreign_keys=[batch_id],
+    )
     slot_index: Mapped[int] = mapped_column(Integer, nullable=False)
     sample_name: Mapped[str] = mapped_column(String(255), nullable=False)
     temperature: Mapped[str] = mapped_column(String(32), nullable=False)

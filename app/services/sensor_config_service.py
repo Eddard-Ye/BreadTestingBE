@@ -39,6 +39,22 @@ def _migrate_serial_entry(raw: dict, default_baud: str) -> dict:
     baud = raw.get("baudRate")
     if baud is None:
         baud = raw.get("baudrate", default_baud)
+
+    smart_calibration_delta = raw.get("smartCalibrationDelta")
+    if smart_calibration_delta is None:
+        if raw.get("smartCalibrationEnabled") is True:
+            smart_calibration_delta = 0.5
+        else:
+            smart_calibration_delta = 0.0
+    else:
+        smart_calibration_delta = float(smart_calibration_delta or 0)
+
+    hold_seconds = raw.get("smartCalibrationHoldSeconds")
+    if hold_seconds is None:
+        hold_seconds = 30.0
+    else:
+        hold_seconds = float(hold_seconds or 30.0)
+
     return {
         "port": raw.get("port", "COM6"),
         "baudRate": str(baud),
@@ -47,7 +63,8 @@ def _migrate_serial_entry(raw: dict, default_baud: str) -> dict:
         "parity": raw.get("parity", "None"),
         "enableMock": raw.get("enableMock", True),
         "calibrationDelta": float(raw.get("calibrationDelta", 0) or 0),
-        "smartCalibrationEnabled": raw.get("smartCalibrationEnabled", False),
+        "smartCalibrationDelta": smart_calibration_delta,
+        "smartCalibrationHoldSeconds": hold_seconds,
     }
 
 

@@ -33,6 +33,8 @@ def test_get_sensor_config_creates_defaults(client: TestClient, isolated_sensor_
     assert data["temperature"]["dataBits"] == "8"
     assert data["temperature"]["calibrationDelta"] == 0
     assert data["weight"]["calibrationDelta"] == 0
+    assert data["weight"]["smartCalibrationDelta"] == 0
+    assert data["weight"]["smartCalibrationHoldSeconds"] == 30
     assert "height" not in data
     assert isolated_sensor_config.exists()
 

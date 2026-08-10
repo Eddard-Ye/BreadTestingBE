@@ -392,13 +392,13 @@ def test_build_measurements_xlsx_appends_stats_table_with_formulas() -> None:
     assert sheet.cell(row=stats_start + 1, column=batch_input_col).value == 100
     assert sheet.cell(row=stats_start, column=sample_input_col).value == 150
     assert sheet.cell(row=stats_start + 1, column=sample_input_col).value == 100
-    assert sheet.cell(row=stats_start, column=tier_value_col).value == '=MAXIFS(E2:E3,E2:E3,"<>0")'
-    assert sheet.cell(row=stats_start + 1, column=tier_value_col).value == '=MINIFS(E2:E3,E2:E3,"<>0")'
+    assert sheet.cell(row=stats_start, column=tier_value_col).value == "=MAX(E2:E3)"
+    assert sheet.cell(row=stats_start + 1, column=tier_value_col).value == "=MIN(E2:E3)"
     assert sheet.cell(row=stats_start, column=11).value == "公差上限 USL"
-    assert sheet.cell(row=stats_start, column=batch_value_col).value == '=MAXIFS(D2:D3,D2:D3,"<>0")'
+    assert sheet.cell(row=stats_start, column=batch_value_col).value == "=MAX(D2:D3)"
     assert sheet.cell(row=stats_start, column=15).value == "公差上限 USL"
-    assert sheet.cell(row=stats_start, column=sample_value_col).value == '=MAXIFS(C2:C3,C2:C3,"<>0")'
-    assert sheet.cell(row=stats_start + 4, column=tier_value_col).value == '=AVERAGEIF(E2:E3,"<>0")'
+    assert sheet.cell(row=stats_start, column=sample_value_col).value == "=MAX(C2:C3)"
+    assert sheet.cell(row=stats_start + 4, column=tier_value_col).value == "=AVERAGE(E2:E3)"
     assert sheet.cell(row=stats_start + 5, column=tier_value_col).value == "=STDEV(E2:E3)"
     assert sheet.cell(row=stats_start + 2, column=tier_value_col).value == "=(I5+I6)/2"
     assert sheet.cell(row=stats_start + 8, column=tier_value_col).value == "=(H5-I9)/(3*I10)"
@@ -519,5 +519,5 @@ def test_build_measurements_xlsx_stats_tables_use_data_derived_limits() -> None:
     assert sheet.cell(row=stats_start + 1, column=16).value == 80
     assert (
         sheet.cell(row=stats_start, column=13).value
-        == '=MAXIFS(D2:D2,D2:D2,"<>0")'
+        == "=MAX(D2:D2)"
     )

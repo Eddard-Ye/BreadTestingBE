@@ -15,7 +15,8 @@ class Settings(BaseSettings):
 
     JWT_SECRET_KEY: str = "bread-testing-dev-secret-change-in-production"
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 10
+    # 桌面内网场景：登录后长期有效，仅主动退出时失效
+    JWT_EXPIRE_MINUTES: int = 525_600  # 约 365 天
     ADMIN_PASSWORD: str = "admin123"
 
     DATABASE_URL: str = (

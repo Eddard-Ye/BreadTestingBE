@@ -1,12 +1,15 @@
 from fastapi.testclient import TestClient
 
+from app.core.config import get_settings
+
 
 def test_login_success(client: TestClient) -> None:
+    settings = get_settings()
     response = client.post("/api/v1/auth/login", json={"password": "admin123"})
     assert response.status_code == 200
     data = response.json()
     assert data["token_type"] == "bearer"
-    assert data["expires_in"] == 600
+    assert data["expires_in"] == settings.JWT_EXPIRE_MINUTES * 60
     assert isinstance(data["access_token"], str)
     assert data["access_token"]
 

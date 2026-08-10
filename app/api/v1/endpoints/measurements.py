@@ -68,6 +68,7 @@ async def export_measurements(
     content = build_measurements_xlsx(
         records,
         enable_water_cut=recipe.enable_water_cut,
+        recipe=recipe,
     )
     safe_name = sanitize_export_filename(filename or f"measurements_{recipe_id}.xlsx")
     return Response(

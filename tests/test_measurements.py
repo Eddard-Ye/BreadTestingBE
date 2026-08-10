@@ -203,7 +203,7 @@ def test_export_measurements_xlsx(client: TestClient) -> None:
     assert "成品-温度" in workbook.sheetnames
     product_temperature = workbook["成品-温度"]
     assert product_temperature.max_row == 18  # header + 1 batch row + blank + stats table
-    assert [product_temperature.cell(row=1, column=col).value for col in range(1, 16)] == [
+    assert [product_temperature.cell(row=1, column=col).value for col in range(1, 17)] == [
         "批次号",
         "开始时间",
         "温度1",
@@ -219,14 +219,20 @@ def test_export_measurements_xlsx(client: TestClient) -> None:
         "温度11",
         "温度12",
         "单批温度",
+        "单打温度",
     ]
-    data_row = [product_temperature.cell(row=2, column=col).value for col in range(1, 16)]
+    data_row = [product_temperature.cell(row=2, column=col).value for col in range(1, 17)]
     assert data_row[0] == 1
     assert isinstance(data_row[1], str) and data_row[1].count("/") == 2
-    assert data_row[2:14] == ["24.5"] * 12
+    assert data_row[2:14] == [24.5] * 12
     assert data_row[14] == 24.5 * 12
-    assert product_temperature.cell(row=4, column=17).value == "公差上限 USL"
-    assert str(product_temperature.cell(row=8, column=19).value).startswith("=AVERAGE(")
+    assert data_row[15] is None
+    assert product_temperature.cell(row=4, column=18).value == "公差上限 USL"
+    assert product_temperature.cell(row=4, column=19).value == 30
+    assert product_temperature.cell(row=5, column=19).value == 20
+    assert str(product_temperature.cell(row=4, column=20).value).startswith("=MAXIFS(")
+    assert product_temperature.cell(row=6, column=20).value == "=(T4+T5)/2"
+    assert str(product_temperature.cell(row=8, column=20).value).startswith("=AVERAGEIF(")
 
 
 def test_export_measurements_respects_time_filter(client: TestClient) -> None:

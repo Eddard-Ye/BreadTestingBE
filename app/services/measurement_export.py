@@ -6,11 +6,12 @@ from collections.abc import Callable
 from datetime import datetime
 
 from openpyxl import Workbook
-from openpyxl.styles import Font
+from openpyxl.styles import Border, Font, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from app.schemas.measurement import MeasurementResponse, RecordType
+from app.schemas.recipe import RecipeBase, SectionParams
 
 DRAFT_SHEET_TITLE = "底稿"
 
@@ -77,6 +78,16 @@ def _format_sum(total: float) -> str | int | float:
     return round(total, 4)
 
 
+def _tier_totals_from_batch_totals(
+    batch_totals: list[float],
+) -> list[float | None]:
+    """Pair consecutive batch totals; write tier sum on the second row of each pair."""
+    tier_values: list[float | None] = [None] * len(batch_totals)
+    for index in range(0, len(batch_totals) - 1, 2):
+        tier_values[index + 1] = batch_totals[index] + batch_totals[index + 1]
+    return tier_values
+
+
 def _group_records_by_batch(
     records: list[MeasurementResponse],
 ) -> list[tuple[int, list[MeasurementResponse]]]:
@@ -115,22 +126,85 @@ def _cell_ref(row: int, column: int) -> str:
     return f"{get_column_letter(column)}{row}"
 
 
-def _append_stats_table(
+def _section_params_for_type(
+    recipe: RecipeBase,
+    record_type: RecordType,
+) -> RecipeBase | SectionParams:
+    if record_type == "bottom":
+        return recipe.bottom_params
+    if record_type == "middle":
+        return recipe.middle_params
+    return recipe
+
+
+def _limits_for_metric(
+    recipe: RecipeBase,
+    record_type: RecordType,
+    field: str,
+) -> tuple[float, float]:
+    """Return (LSL/min, USL/max) for the recipe section and metric field."""
+    section = _section_params_for_type(recipe, record_type)
+    spec = getattr(section, field)
+    return spec.min, spec.max
+
+
+def _metric_cell_value(raw: str) -> int | float | None:
+    """Write parseable measurements as numbers so Excel stats formulas work."""
+    if not str(raw).strip():
+        return None
+    return _format_sum(_parse_numeric(raw))
+
+
+def _mean_nonzero_formula(data_range: str) -> str:
+    return f'=AVERAGEIF({data_range},"<>0")'
+
+
+def _stdev_formula(data_range: str) -> str:
+    """STDEV (sample σ) is supported by Excel, WPS, and Apple Numbers; blank cells are ignored."""
+    return f"=STDEV({data_range})"
+
+
+def _max_nonzero_formula(data_range: str) -> str:
+    return f'=MAXIFS({data_range},{data_range},"<>0")'
+
+
+def _min_nonzero_formula(data_range: str) -> str:
+    return f'=MINIFS({data_range},{data_range},"<>0")'
+
+
+def _column_data_range(column: int, last_data_row: int) -> str:
+    col_letter = get_column_letter(column)
+    return f"{col_letter}2:{col_letter}{last_data_row}"
+
+
+def _rect_data_range(
+    first_column: int,
+    last_column: int,
+    last_data_row: int,
+) -> str:
+    first_letter = get_column_letter(first_column)
+    last_letter = get_column_letter(last_column)
+    return f"{first_letter}2:{last_letter}{last_data_row}"
+
+
+def _append_single_stats_table(
     worksheet: Worksheet,
     *,
-    last_data_row: int,
-    batch_total_col: int,
-) -> None:
-    """在数据区右下方追加 SPC 统计表（含 Excel 公式）。"""
-    stats_start_row = last_data_row + 2
-    stats_start_col = batch_total_col + 2
-    label_col = stats_start_col
-    input_col = stats_start_col + 1
-    value_col = stats_start_col + 2
-    red_label = Font(color="FF0000")
+    stats_start_row: int,
+    start_col: int,
+    data_range: str,
+    usl: float | None = None,
+    lsl: float | None = None,
+) -> int:
+    """Write one SPC stats block.
 
-    batch_col = get_column_letter(batch_total_col)
-    batch_range = f"{batch_col}2:{batch_col}{last_data_row}"
+    When usl/lsl are given, col 2 holds recipe limits and col 3 USL/LSL
+    are computed from the table's data range. U/T use col 3; CPK formulas use col 2.
+    """
+    label_col = start_col
+    input_col = start_col + 1
+    value_col = start_col + 2
+    red_label = Font(color="FF0000")
 
     usl_row = stats_start_row
     lsl_row = stats_start_row + 1
@@ -149,6 +223,8 @@ def _append_stats_table(
 
     usl_input_ref = _cell_ref(usl_row, input_col)
     lsl_input_ref = _cell_ref(lsl_row, input_col)
+    usl_value_ref = _cell_ref(usl_row, value_col)
+    lsl_value_ref = _cell_ref(lsl_row, value_col)
     u_ref = _cell_ref(u_row, value_col)
     t_ref = _cell_ref(t_row, value_col)
     mean_ref = _cell_ref(mean_row, value_col)
@@ -158,24 +234,50 @@ def _append_stats_table(
     cp_ref = _cell_ref(cp_row, value_col)
     ca_ref = _cell_ref(ca_row, value_col)
 
-    rows: list[tuple[str, str | None, str | None, bool]] = [
-        ("公差上限 USL", None, f"={usl_input_ref}", False),
-        ("公差下限 LSL", None, f"={lsl_input_ref}", False),
-        ("规格中心 U", "(USL + LSL) / 2", f"=({usl_input_ref}+{lsl_input_ref})/2", False),
-        ("规格公差 T", "USL - LSL", f"={usl_input_ref}-{lsl_input_ref}", False),
-        ("X 平均值", "na", f"=AVERAGE({batch_range})", False),
-        ("标准差 σ", "STDEV", f"=STDEV({batch_range})", False),
-        ("最大值", "MAX", f"=MAX({batch_range})", False),
-        ("最小值", "Min", f"=MIN({batch_range})", False),
-        ("CPKU", "(USL - X) / 3σ", f"=({usl_input_ref}-{mean_ref})/(3*{stdev_ref})", False),
-        ("CPKL", "(X - LSL) / 3σ", f"=({mean_ref}-{lsl_input_ref})/(3*{stdev_ref})", False),
+    if usl is not None and lsl is not None:
+        usl_input: str | float | None = usl
+        lsl_input: str | float | None = lsl
+        usl_value_formula = _max_nonzero_formula(data_range)
+        lsl_value_formula = _min_nonzero_formula(data_range)
+        usl_spec_ref = usl_input_ref
+        lsl_spec_ref = lsl_input_ref
+    else:
+        usl_input = "数据最大值"
+        lsl_input = "数据最小值"
+        usl_value_formula = _max_nonzero_formula(data_range)
+        lsl_value_formula = _min_nonzero_formula(data_range)
+        usl_spec_ref = usl_value_ref
+        lsl_spec_ref = lsl_value_ref
+
+    mean_formula = _mean_nonzero_formula(data_range)
+    stdev_formula = _stdev_formula(data_range)
+    max_formula = _max_nonzero_formula(data_range)
+    min_formula = _min_nonzero_formula(data_range)
+
+    rows: list[tuple[str, str | float | None, str | None, bool]] = [
+        ("公差上限 USL", usl_input, usl_value_formula, False),
+        ("公差下限 LSL", lsl_input, lsl_value_formula, False),
+        ("规格中心 U", "(USL + LSL) / 2", f"=({usl_value_ref}+{lsl_value_ref})/2", False),
+        ("规格公差 T", "USL - LSL", f"={usl_value_ref}-{lsl_value_ref}", False),
+        ("X 平均值", "na", mean_formula, False),
+        ("标准差 σ", "STDEV", stdev_formula, False),
+        ("最大值", "MAX", max_formula, False),
+        ("最小值", "Min", min_formula, False),
+        ("CPKU", "(USL - X) / 3σ", f"=({usl_spec_ref}-{mean_ref})/(3*{stdev_ref})", False),
+        ("CPKL", "(X - LSL) / 3σ", f"=({mean_ref}-{lsl_spec_ref})/(3*{stdev_ref})", False),
         ("CPK", "Min(CPKU, CPKL)", f"=MIN({cpku_ref},{cpkl_ref})", True),
         ("", None, None, False),
-        ("Cp 离散趋势精确度", "(USL - LSL) / 6σ", f"=({usl_input_ref}-{lsl_input_ref})/(6*{stdev_ref})", False),
+        (
+            "Cp 离散趋势精确度",
+            "(USL - LSL) / 6σ",
+            f"=({usl_spec_ref}-{lsl_spec_ref})/(6*{stdev_ref})",
+            False,
+        ),
         ("Ca 集中趋势精确度", "(X - U) / (T / 2)", f"=({mean_ref}-{u_ref})/({t_ref}/2)", False),
         ("Cpk", "Cp * (1 - |Ca|)", f"={cp_ref}*(1-ABS({ca_ref}))", True),
     ]
 
+    stats_end_row = stats_start_row + len(rows) - 1
     current_row = stats_start_row
     for label, hint, formula, is_red in rows:
         label_cell = worksheet.cell(row=current_row, column=label_col, value=label or None)
@@ -186,6 +288,55 @@ def _append_stats_table(
         if formula is not None:
             worksheet.cell(row=current_row, column=value_col, value=formula)
         current_row += 1
+
+    black_side = Side(style="thin", color="000000")
+    stats_border = Border(
+        left=black_side,
+        right=black_side,
+        top=black_side,
+        bottom=black_side,
+    )
+    for row in range(stats_start_row, stats_end_row + 1):
+        for col in range(label_col, value_col + 1):
+            worksheet.cell(row=row, column=col).border = stats_border
+
+    return stats_end_row
+
+
+def _append_spc_stats_tables(
+    worksheet: Worksheet,
+    *,
+    last_data_row: int,
+    tier_total_col: int,
+    batch_total_col: int,
+    sample_first_col: int,
+    sample_last_col: int,
+    recipe_usl: float | None = None,
+    recipe_lsl: float | None = None,
+) -> None:
+    """Append three side-by-side SPC tables: tier, batch, and raw sample values."""
+    stats_start_row = last_data_row + 2
+    first_table_col = tier_total_col + 2
+    table_stride = 4  # 3 columns + 1 gap
+
+    tier_range = _column_data_range(tier_total_col, last_data_row)
+    batch_range = _column_data_range(batch_total_col, last_data_row)
+    sample_range = _rect_data_range(sample_first_col, sample_last_col, last_data_row)
+
+    table_specs: list[tuple[str, float | None, float | None]] = [
+        (tier_range, recipe_usl, recipe_lsl),
+        (batch_range, recipe_usl, recipe_lsl),
+        (sample_range, recipe_usl, recipe_lsl),
+    ]
+    for offset, (data_range, usl, lsl) in enumerate(table_specs):
+        _append_single_stats_table(
+            worksheet,
+            stats_start_row=stats_start_row,
+            start_col=first_table_col + offset * table_stride,
+            data_range=data_range,
+            usl=usl,
+            lsl=lsl,
+        )
 
 
 def _draft_sheet_header(*, enable_water_cut: bool) -> list[str]:
@@ -247,6 +398,9 @@ def _append_metric_sheet(
     metric_label: str,
     records: list[MeasurementResponse],
     value_getter: Callable[[MeasurementResponse], str],
+    recipe: RecipeBase | None = None,
+    record_type: RecordType | None = None,
+    metric_field: str | None = None,
 ) -> None:
     grouped = _group_records_by_batch(records)
     max_samples = max((len(batch_records) for _, batch_records in grouped), default=0)
@@ -255,27 +409,58 @@ def _append_metric_sheet(
     header = ["批次号", "开始时间"]
     header.extend(f"{metric_label}{index}" for index in range(1, max_samples + 1))
     header.append(f"单批{metric_label}")
+    header.append(f"单打{metric_label}")
     worksheet.append(header)
 
+    batch_rows: list[tuple[int | None, str, list[str], float]] = []
     for batch_id, batch_records in grouped:
         values = [value_getter(record) for record in batch_records]
         total = sum(_parse_numeric(value) for value in values)
+        batch_rows.append(
+            (
+                batch_id or None,
+                _batch_start_time(batch_records),
+                values,
+                total,
+            )
+        )
+
+    tier_totals = _tier_totals_from_batch_totals([total for *_, total in batch_rows])
+
+    for (batch_id, start_time, values, total), tier_total in zip(
+        batch_rows,
+        tier_totals,
+        strict=True,
+    ):
         row: list[object] = [
-            batch_id or None,
-            _batch_start_time(batch_records),
-            *values,
+            batch_id,
+            start_time,
+            *[_metric_cell_value(value) for value in values],
         ]
         if len(values) < max_samples:
-            row.extend([""] * (max_samples - len(values)))
+            row.extend([None] * (max_samples - len(values)))
         row.append(_format_sum(total))
+        row.append(_format_sum(tier_total) if tier_total is not None else None)
         worksheet.append(row)
 
     last_data_row = worksheet.max_row
     batch_total_col = 2 + max_samples + 1
-    _append_stats_table(
+    tier_total_col = batch_total_col + 1
+    sample_first_col = 3
+    sample_last_col = 2 + max_samples
+    recipe_usl: float | None = None
+    recipe_lsl: float | None = None
+    if recipe is not None and record_type is not None and metric_field is not None:
+        recipe_lsl, recipe_usl = _limits_for_metric(recipe, record_type, metric_field)
+    _append_spc_stats_tables(
         worksheet,
         last_data_row=last_data_row,
+        tier_total_col=tier_total_col,
         batch_total_col=batch_total_col,
+        sample_first_col=sample_first_col,
+        sample_last_col=sample_last_col,
+        recipe_usl=recipe_usl,
+        recipe_lsl=recipe_lsl,
     )
 
 
@@ -283,6 +468,7 @@ def build_measurements_xlsx(
     records: list[MeasurementResponse],
     *,
     enable_water_cut: bool = False,
+    recipe: RecipeBase | None = None,
 ) -> bytes:
     workbook = Workbook()
     default_sheet = workbook.active
@@ -320,6 +506,9 @@ def build_measurements_xlsx(
                 metric_label=short_label,
                 records=typed_records,
                 value_getter=lambda record, metric_field=field: _metric_value(record, metric_field),
+                recipe=recipe,
+                record_type=record_type,
+                metric_field=field,
             )
 
     if not workbook.sheetnames:

@@ -4,11 +4,46 @@ from io import BytesIO
 from openpyxl import load_workbook
 
 from app.schemas.measurement import MeasurementResponse
+from app.schemas.recipe import RecipeBase, SectionParams
 from app.services.measurement_export import (
     build_measurements_xlsx,
     format_recorded_at,
     sanitize_export_filename,
     sanitize_sheet_title,
+    _limits_for_metric,
+    _tier_totals_from_batch_totals,
+)
+
+_EXPORT_TEST_RECIPE = RecipeBase(
+    name="测试配方",
+    batch_size=4,
+    temperature={"min": 20, "max": 30},
+    weight={"min": 100, "max": 150},
+    length={"min": 90, "max": 110},
+    width={"min": 40, "max": 55},
+    height={"min": 25, "max": 35},
+    water_cut_width={"min": 40, "max": 50},
+    enable_water_cut=True,
+    enable_bottom_measurement=True,
+    bottom_params=SectionParams(
+        batch_size=2,
+        temperature={"min": 18, "max": 24},
+        weight={"min": 80, "max": 95},
+        length={"min": 85, "max": 100},
+        width={"min": 35, "max": 45},
+        height={"min": 20, "max": 28},
+        water_cut_width={"min": 30, "max": 40},
+    ),
+    enable_middle_measurement=True,
+    middle_params=SectionParams(
+        batch_size=2,
+        temperature={"min": 19, "max": 25},
+        weight={"min": 90, "max": 105},
+        length={"min": 88, "max": 102},
+        width={"min": 38, "max": 48},
+        height={"min": 22, "max": 30},
+        water_cut_width={"min": 32, "max": 42},
+    ),
 )
 
 
@@ -108,17 +143,19 @@ def test_build_measurements_xlsx_creates_metric_sheets_per_type() -> None:
     assert "成品-水切宽度" not in workbook.sheetnames
 
     product_temperature = workbook["成品-温度"]
-    assert _row_values(product_temperature, 1, 4) == [
+    assert _row_values(product_temperature, 1, 5) == [
         "批次号",
         "开始时间",
         "温度1",
         "单批温度",
+        "单打温度",
     ]
-    assert _row_values(product_temperature, 2, 4) == [
+    assert _row_values(product_temperature, 2, 5) == [
         1,
         "2026/06/22 16:32:56",
-        "24.5",
         24.5,
+        24.5,
+        None,
     ]
 
 
@@ -177,41 +214,54 @@ def test_build_measurements_xlsx_groups_batch_into_one_row_with_sum() -> None:
     temperature_sheet = workbook["成品-温度"]
     weight_sheet = workbook["成品-重量"]
 
-    assert _row_values(temperature_sheet, 1, 5) == [
+    assert _row_values(temperature_sheet, 1, 6) == [
         "批次号",
         "开始时间",
         "温度1",
         "温度2",
         "单批温度",
+        "单打温度",
     ]
-    assert _row_values(temperature_sheet, 2, 5) == [
+    assert _row_values(temperature_sheet, 2, 6) == [
         1,
         "2026/06/22 16:32:56",
-        "24.5",
-        "25.5",
+        24.5,
+        25.5,
         50,
+        None,
     ]
-    assert _row_values(temperature_sheet, 3, 5) == [
+    assert _row_values(temperature_sheet, 3, 6) == [
         2,
         "2026/06/22 17:00:00",
-        "20",
+        20,
         None,
         20,
+        70,
     ]
 
-    assert _row_values(weight_sheet, 1, 5) == [
+    assert _row_values(weight_sheet, 1, 6) == [
         "批次号",
         "开始时间",
         "重量1",
         "重量2",
         "单批重量",
+        "单打重量",
     ]
-    assert _row_values(weight_sheet, 2, 5) == [
+    assert _row_values(weight_sheet, 2, 6) == [
         1,
         "2026/06/22 16:32:56",
-        "100",
-        "110",
+        100,
+        110,
         210,
+        None,
+    ]
+    assert _row_values(weight_sheet, 3, 6) == [
+        2,
+        "2026/06/22 17:00:00",
+        90,
+        None,
+        90,
+        300,
     ]
 
 
@@ -262,17 +312,19 @@ def test_build_measurements_xlsx_includes_water_cut_for_product_when_enabled() -
         "42.5",
         "2026/06/22 16:32:56",
     ]
-    assert _row_values(workbook["成品-水切宽度"], 1, 4) == [
+    assert _row_values(workbook["成品-水切宽度"], 1, 5) == [
         "批次号",
         "开始时间",
         "水切宽度1",
         "单批水切宽度",
+        "单打水切宽度",
     ]
-    assert _row_values(workbook["成品-水切宽度"], 2, 4) == [
+    assert _row_values(workbook["成品-水切宽度"], 2, 5) == [
         1,
         "2026/06/22 16:32:56",
-        "42.5",
         42.5,
+        42.5,
+        None,
     ]
 
 
@@ -315,21 +367,157 @@ def test_build_measurements_xlsx_appends_stats_table_with_formulas() -> None:
             recorded_at=datetime(2026, 6, 22, 17, 0, 0),
         ),
     ]
-    workbook = load_workbook(BytesIO(build_measurements_xlsx(records, enable_water_cut=False)))
+    workbook = load_workbook(
+        BytesIO(
+            build_measurements_xlsx(
+                records,
+                enable_water_cut=False,
+                recipe=_EXPORT_TEST_RECIPE,
+            )
+        )
+    )
     sheet = workbook["成品-重量"]
 
     stats_start = 5  # header + 2 data rows + blank row
-    stats_label_col = 6  # batch_total_col(4) + 2
-    stats_input_col = 7
-    stats_value_col = 8
-    assert sheet.cell(row=stats_start, column=stats_label_col).value == "公差上限 USL"
-    assert sheet.cell(row=stats_start, column=stats_input_col).value is None
-    assert sheet.cell(row=stats_start, column=stats_value_col).value == "=G5"
-    assert sheet.cell(row=stats_start + 2, column=stats_input_col).value == "(USL + LSL) / 2"
-    assert sheet.cell(row=stats_start + 2, column=stats_value_col).value == "=(G5+G6)/2"
-    assert sheet.cell(row=stats_start + 4, column=stats_value_col).value == "=AVERAGE(D2:D3)"
-    assert sheet.cell(row=stats_start + 5, column=stats_value_col).value == "=STDEV(D2:D3)"
-    assert sheet.cell(row=stats_start + 8, column=stats_value_col).value == "=(G5-H9)/(3*H10)"
-    assert sheet.cell(row=stats_start + 10, column=stats_label_col).value == "CPK"
-    assert sheet.cell(row=stats_start + 10, column=stats_value_col).value == "=MIN(H13,H14)"
-    assert sheet.cell(row=stats_start + 14, column=stats_value_col).value == "=H17*(1-ABS(H18))"
+    tier_value_col = 9
+    tier_input_col = 8
+    batch_value_col = 13
+    sample_value_col = 17
+    assert sheet.cell(row=stats_start, column=7).value == "公差上限 USL"
+    assert sheet.cell(row=stats_start, column=tier_input_col).value == 150
+    assert sheet.cell(row=stats_start + 1, column=tier_input_col).value == 100
+    batch_input_col = 12
+    sample_input_col = 16
+    assert sheet.cell(row=stats_start, column=batch_input_col).value == 150
+    assert sheet.cell(row=stats_start + 1, column=batch_input_col).value == 100
+    assert sheet.cell(row=stats_start, column=sample_input_col).value == 150
+    assert sheet.cell(row=stats_start + 1, column=sample_input_col).value == 100
+    assert sheet.cell(row=stats_start, column=tier_value_col).value == '=MAXIFS(E2:E3,E2:E3,"<>0")'
+    assert sheet.cell(row=stats_start + 1, column=tier_value_col).value == '=MINIFS(E2:E3,E2:E3,"<>0")'
+    assert sheet.cell(row=stats_start, column=11).value == "公差上限 USL"
+    assert sheet.cell(row=stats_start, column=batch_value_col).value == '=MAXIFS(D2:D3,D2:D3,"<>0")'
+    assert sheet.cell(row=stats_start, column=15).value == "公差上限 USL"
+    assert sheet.cell(row=stats_start, column=sample_value_col).value == '=MAXIFS(C2:C3,C2:C3,"<>0")'
+    assert sheet.cell(row=stats_start + 4, column=tier_value_col).value == '=AVERAGEIF(E2:E3,"<>0")'
+    assert sheet.cell(row=stats_start + 5, column=tier_value_col).value == "=STDEV(E2:E3)"
+    assert sheet.cell(row=stats_start + 2, column=tier_value_col).value == "=(I5+I6)/2"
+    assert sheet.cell(row=stats_start + 8, column=tier_value_col).value == "=(H5-I9)/(3*I10)"
+    assert sheet.cell(row=stats_start + 10, column=7).value == "CPK"
+    assert sheet.cell(row=stats_start + 10, column=tier_value_col).value == "=MIN(I13,I14)"
+    assert sheet.cell(row=stats_start + 14, column=tier_value_col).value == "=I17*(1-ABS(I18))"
+
+
+def test_tier_totals_from_batch_totals_pairs_and_discards_trailing_odd_batch() -> None:
+    assert _tier_totals_from_batch_totals([50, 20, 30]) == [None, 70, None]
+    assert _tier_totals_from_batch_totals([10, 20, 30, 40]) == [None, 30, None, 70]
+    assert _tier_totals_from_batch_totals([10]) == [None]
+
+
+def test_build_measurements_xlsx_stats_table_has_black_border() -> None:
+    records = [
+        MeasurementResponse(
+            id="1",
+            batch_id=1,
+            recipe_id="standardC",
+            record_type="product",
+            slot_index=0,
+            sample_name="样品-成品-1",
+            temperature="24.5",
+            weight="100",
+            length="0",
+            width="0",
+            height="0",
+            water_cut_width="0",
+            preview_name=None,
+            recorded_at=datetime(2026, 6, 22, 16, 32, 56),
+        ),
+        MeasurementResponse(
+            id="2",
+            batch_id=2,
+            recipe_id="standardC",
+            record_type="product",
+            slot_index=0,
+            sample_name="样品-成品-2",
+            temperature="26.5",
+            weight="110",
+            length="0",
+            width="0",
+            height="0",
+            water_cut_width="0",
+            preview_name=None,
+            recorded_at=datetime(2026, 6, 22, 17, 0, 0),
+        ),
+    ]
+    workbook = load_workbook(
+        BytesIO(
+            build_measurements_xlsx(
+                records,
+                enable_water_cut=False,
+                recipe=_EXPORT_TEST_RECIPE,
+            )
+        )
+    )
+    sheet = workbook["成品-重量"]
+    stats_start = 5
+    table_ranges = (
+        range(7, 10),
+        range(11, 14),
+        range(15, 18),
+    )
+    stats_end = stats_start + 14
+    for cols in table_ranges:
+        for row in range(stats_start, stats_end + 1):
+            for col in cols:
+                border = sheet.cell(row=row, column=col).border
+                assert border.left.style == "thin"
+                assert border.right.style == "thin"
+                assert border.top.style == "thin"
+                assert border.bottom.style == "thin"
+
+
+def test_limits_for_metric_uses_section_params() -> None:
+    assert _limits_for_metric(_EXPORT_TEST_RECIPE, "product", "weight") == (100, 150)
+    assert _limits_for_metric(_EXPORT_TEST_RECIPE, "bottom", "weight") == (80, 95)
+    assert _limits_for_metric(_EXPORT_TEST_RECIPE, "middle", "temperature") == (19, 25)
+
+
+def test_build_measurements_xlsx_stats_tables_use_data_derived_limits() -> None:
+    records = [
+        MeasurementResponse(
+            id="1",
+            batch_id=1,
+            recipe_id="standardC",
+            record_type="bottom",
+            slot_index=0,
+            sample_name="样品-底片-1",
+            temperature="22.1",
+            weight="88.3",
+            length="91.2",
+            width="45.5",
+            height="28.8",
+            water_cut_width="0",
+            preview_name=None,
+            recorded_at=datetime(2026, 6, 22, 16, 33, 10),
+        ),
+    ]
+    workbook = load_workbook(
+        BytesIO(
+            build_measurements_xlsx(
+                records,
+                enable_water_cut=False,
+                recipe=_EXPORT_TEST_RECIPE,
+            )
+        )
+    )
+    sheet = workbook["底片-重量"]
+    stats_start = 4
+    assert sheet.cell(row=stats_start, column=8).value == 95
+    assert sheet.cell(row=stats_start + 1, column=8).value == 80
+    assert sheet.cell(row=stats_start, column=12).value == 95
+    assert sheet.cell(row=stats_start + 1, column=12).value == 80
+    assert sheet.cell(row=stats_start, column=16).value == 95
+    assert sheet.cell(row=stats_start + 1, column=16).value == 80
+    assert (
+        sheet.cell(row=stats_start, column=13).value
+        == '=MAXIFS(D2:D2,D2:D2,"<>0")'
+    )

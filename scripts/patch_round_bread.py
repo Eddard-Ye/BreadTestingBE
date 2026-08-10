@@ -141,6 +141,131 @@ def _patch_bo(content: str) -> str:
     return content[:bo_start] + bo + content[bo_end:]
 
 
+UTE_HELPERS = (
+    'function UteSP(e,t){const r=l1(e,t);return r?r.recordType==="bottom"?e.bottomParams:'
+    'r.recordType==="middle"?e.middleParams:e:null}'
+    'function UteOOR(e,t){if(!e||t==null||t==="")return!1;const r=parseFloat(t);'
+    'return Number.isNaN(r)?!1:r<e.min||r>e.max}'
+)
+
+UTE_DTE_MARKER = (
+    'function Dte(e,t){const r=l1(e,t);return(r==null?void 0:r.recordType)==="bottom"?'
+    'e.bottomParams.heightCalcMode||"peak"'
+)
+
+UTE_HEADER_WITH_OOR = (
+    'function Ute({open:e,sampleName:t,recordName:r,data:n,imagePreviewUrl:a,sampleConfig:f,recordIndex:p,'
+    'isWaterCutEnabled:o,isRoundBreadEnabled:s,onConfirm:l,onRetry:c}){if(!n)return null;'
+    'const v=UteSP(f,p),y=(h,w)=>v&&w!=null&&w!==""?UteOOR(v[h],w):!1,u=['
+    '{icon:m.jsx(Zo,{size:14,className:"text-orange-400"}),label:"温度",value:`${n.temperature} °C`,'
+    'color:"text-orange-300",outOfRange:y("temperature",n.temperature)},'
+    '{icon:m.jsx(Jo,{size:14,className:"text-yellow-400"}),label:"重量",value:`${n.weight} g`,'
+    'color:"text-yellow-300",outOfRange:y("weight",n.weight)},'
+    '...(s?[{icon:m.jsx($f,{size:14,className:"text-blue-400"}),label:"直径",value:`${n.length} mm`,'
+    'color:"text-blue-300",outOfRange:y("length",n.length)}]:'
+    '[{icon:m.jsx($f,{size:14,className:"text-blue-400"}),label:"长度",value:`${n.length} mm`,'
+    'color:"text-blue-300",outOfRange:y("length",n.length)},'
+    '{icon:m.jsx(Mf,{size:14,className:"text-purple-400"}),label:"宽度",value:`${n.width} mm`,'
+    'color:"text-purple-300",outOfRange:y("width",n.width)}]),'
+    '{icon:m.jsx(Rf,{size:14,className:"text-emerald-400"}),label:"高度",value:`${n.height} mm`,'
+    'color:"text-emerald-300",outOfRange:y("height",n.height)},'
+    '...o?[{icon:m.jsx(Df,{size:14,className:"text-pink-400"}),label:"水切宽度",value:`${n.waterCutWidth} mm`,'
+    'color:"text-pink-300",outOfRange:y("waterCutWidth",n.waterCutWidth)}]:[],'
+    '{icon:m.jsx(If,{size:14,className:"text-cyan-400"}),label:"时间",value:n.timestamp,'
+    'color:"text-cyan-300",outOfRange:!1}];'
+)
+
+UTE_HEADER_RB_NO_OOR = (
+    'function Ute({open:e,sampleName:t,recordName:r,data:n,imagePreviewUrl:a,isWaterCutEnabled:o,'
+    'isRoundBreadEnabled:s,onConfirm:l,onRetry:c}){if(!n)return null;const u=['
+    '{icon:m.jsx(Zo,{size:14,className:"text-orange-400"}),label:"温度",value:`${n.temperature} °C`,'
+    'color:"text-orange-300"},{icon:m.jsx(Jo,{size:14,className:"text-yellow-400"}),label:"重量",'
+    'value:`${n.weight} g`,color:"text-yellow-300"},'
+    '...(s?[{icon:m.jsx($f,{size:14,className:"text-blue-400"}),label:"直径",value:`${n.length} mm`,'
+    'color:"text-blue-300"}]:[{icon:m.jsx($f,{size:14,className:"text-blue-400"}),label:"长度",'
+    'value:`${n.length} mm`,color:"text-blue-300"},{icon:m.jsx(Mf,{size:14,className:"text-purple-400"}),'
+    'label:"宽度",value:`${n.width} mm`,color:"text-purple-300"}]),'
+    '{icon:m.jsx(Rf,{size:14,className:"text-emerald-400"}),label:"高度",value:`${n.height} mm`,'
+    'color:"text-emerald-300"},...o?[{icon:m.jsx(Df,{size:14,className:"text-pink-400"}),label:"水切宽度",'
+    'value:`${n.waterCutWidth} mm`,color:"text-pink-300"}]:[],'
+    '{icon:m.jsx(If,{size:14,className:"text-cyan-400"}),label:"时间",value:n.timestamp,color:"text-cyan-300"}];'
+)
+
+UTE_HEADER_BASE = (
+    'function Ute({open:e,sampleName:t,recordName:r,data:n,imagePreviewUrl:a,isWaterCutEnabled:o,onConfirm:l,onRetry:c})'
+    '{if(!n)return null;const u=[{icon:m.jsx(Zo,{size:14,className:"text-orange-400"}),label:"温度",'
+    'value:`${n.temperature} °C`,color:"text-orange-300"},{icon:m.jsx(Jo,{size:14,className:"text-yellow-400"}),'
+    'label:"重量",value:`${n.weight} g`,color:"text-yellow-300"},{icon:m.jsx($f,{size:14,className:"text-blue-400"}),'
+    'label:"长度",value:`${n.length} mm`,color:"text-blue-300"},{icon:m.jsx(Mf,{size:14,className:"text-purple-400"}),'
+    'label:"宽度",value:`${n.width} mm`,color:"text-purple-300"},{icon:m.jsx(Rf,{size:14,className:"text-emerald-400"}),'
+    'label:"高度",value:`${n.height} mm`,color:"text-emerald-300"},...o?[{icon:m.jsx(Df,{size:14,className:"text-pink-400"}),'
+    'label:"水切宽度",value:`${n.waterCutWidth} mm`,color:"text-pink-300"}]:[],'
+    '{icon:m.jsx(If,{size:14,className:"text-cyan-400"}),label:"时间",value:n.timestamp,color:"text-cyan-300"}];'
+)
+
+UTE_VALUE_SPAN_OLD = (
+    'm.jsx("span",{className:`text-sm font-medium ${d.color} drop-shadow-[0_0_6px_currentColor]`,children:d.value})'
+)
+UTE_VALUE_SPAN_NEW = (
+    'm.jsxs("span",{className:`text-sm ${d.outOfRange?"font-bold":"font-medium"} ${d.color} '
+    'drop-shadow-[0_0_6px_currentColor]`,children:[d.value,d.outOfRange?m.jsx("span",{className:"ml-2 text-xs font-bold",'
+    'children:"超出范围"}):null]})'
+)
+
+UTE_CALL_WITH_RB = (
+    'imagePreviewUrl:X==null?void 0:X.imagePreviewUrl,isWaterCutEnabled:X&&se[c]?DC(se[c],X.index):!1,'
+    'isRoundBreadEnabled:X&&se[c]?RBr(se[c],X.index):!1,onConfirm:Gn,onRetry:Xn'
+)
+UTE_CALL_WITH_RB_OOR = (
+    'imagePreviewUrl:X==null?void 0:X.imagePreviewUrl,sampleConfig:se[c],recordIndex:X==null?void 0:X.index,'
+    'isWaterCutEnabled:X&&se[c]?DC(se[c],X.index):!1,isRoundBreadEnabled:X&&se[c]?RBr(se[c],X.index):!1,'
+    'onConfirm:Gn,onRetry:Xn'
+)
+
+
+def _patch_ute_out_of_range(content: str) -> str:
+    if "超出范围" in content and "function UteSP(" in content:
+        return content
+
+    if "function UteSP(" not in content:
+        if UTE_DTE_MARKER not in content:
+            raise RuntimeError("Dte marker not found for UteSP/UteOOR insert")
+        content = content.replace(UTE_DTE_MARKER, UTE_HELPERS + UTE_DTE_MARKER, 1)
+
+    if UTE_VALUE_SPAN_NEW not in content:
+        if UTE_VALUE_SPAN_OLD not in content:
+            raise RuntimeError("Ute value span marker not found")
+        content = content.replace(UTE_VALUE_SPAN_OLD, UTE_VALUE_SPAN_NEW, 1)
+
+    if UTE_HEADER_WITH_OOR not in content:
+        for old_header in (UTE_HEADER_RB_NO_OOR, UTE_HEADER_BASE):
+            if old_header in content:
+                content = content.replace(old_header, UTE_HEADER_WITH_OOR, 1)
+                break
+        else:
+            raise RuntimeError("Ute header not found for out-of-range patch")
+
+    if UTE_CALL_WITH_RB_OOR not in content:
+        if UTE_CALL_WITH_RB in content:
+            content = content.replace(UTE_CALL_WITH_RB, UTE_CALL_WITH_RB_OOR, 1)
+        else:
+            old_call = (
+                "imagePreviewUrl:X==null?void 0:X.imagePreviewUrl,isWaterCutEnabled:X&&se[c]?"
+                "DC(se[c],X.index):!1,onConfirm:Gn,onRetry:Xn"
+            )
+            if old_call not in content:
+                raise RuntimeError("Ute call site not found")
+            content = content.replace(
+                old_call,
+                "imagePreviewUrl:X==null?void 0:X.imagePreviewUrl,sampleConfig:se[c],"
+                "recordIndex:X==null?void 0:X.index,isWaterCutEnabled:X&&se[c]?"
+                "DC(se[c],X.index):!1,onConfirm:Gn,onRetry:Xn",
+                1,
+            )
+
+    return content
+
+
 def patch(content: str) -> str:
     replacements: list[tuple[str, str]] = [
         (
@@ -180,10 +305,6 @@ def patch(content: str) -> str:
             '...(n!=null&&n.enableRoundBread?[m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.length||"-"})]:[m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.length||"-"}),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.width||"-"})]),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.height||"-"}),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:e&&k.type==="product"&&k.waterCutWidth||"-"}),m.jsx(Ft,{className:"text-cyan-300 text-xs py-2",children:k.timestamp||"-"})]},k.id)}),P.length===0&&m.jsx(Di,{children:m.jsx',
         ),
         (
-            'function Ute({open:e,sampleName:t,recordName:r,data:n,imagePreviewUrl:a,isWaterCutEnabled:o,onConfirm:l,onRetry:c}){if(!n)return null;const u=[{icon:m.jsx(Zo,{size:14,className:"text-orange-400"}),label:"温度",value:`${n.temperature} °C`,color:"text-orange-300"},{icon:m.jsx(Jo,{size:14,className:"text-yellow-400"}),label:"重量",value:`${n.weight} g`,color:"text-yellow-300"},{icon:m.jsx($f,{size:14,className:"text-blue-400"}),label:"长度",value:`${n.length} mm`,color:"text-blue-300"},{icon:m.jsx(Mf,{size:14,className:"text-purple-400"}),label:"宽度",value:`${n.width} mm`,color:"text-purple-300"},{icon:m.jsx(Rf,{size:14,className:"text-emerald-400"}),label:"高度",value:`${n.height} mm`,color:"text-emerald-300"},...o?[{icon:m.jsx(Df,{size:14,className:"text-pink-400"}),label:"水切宽度",value:`${n.waterCutWidth} mm`,color:"text-pink-300"}]:[],{icon:m.jsx(If,{size:14,className:"text-cyan-400"}),label:"时间",value:n.timestamp,color:"text-cyan-300"}];',
-            'function Ute({open:e,sampleName:t,recordName:r,data:n,imagePreviewUrl:a,isWaterCutEnabled:o,isRoundBreadEnabled:s,onConfirm:l,onRetry:c}){if(!n)return null;const u=[{icon:m.jsx(Zo,{size:14,className:"text-orange-400"}),label:"温度",value:`${n.temperature} °C`,color:"text-orange-300"},{icon:m.jsx(Jo,{size:14,className:"text-yellow-400"}),label:"重量",value:`${n.weight} g`,color:"text-yellow-300"},...(s?[{icon:m.jsx($f,{size:14,className:"text-blue-400"}),label:"直径",value:`${n.length} mm`,color:"text-blue-300"}]:[{icon:m.jsx($f,{size:14,className:"text-blue-400"}),label:"长度",value:`${n.length} mm`,color:"text-blue-300"},{icon:m.jsx(Mf,{size:14,className:"text-purple-400"}),label:"宽度",value:`${n.width} mm`,color:"text-purple-300"}]),{icon:m.jsx(Rf,{size:14,className:"text-emerald-400"}),label:"高度",value:`${n.height} mm`,color:"text-emerald-300"},...o?[{icon:m.jsx(Df,{size:14,className:"text-pink-400"}),label:"水切宽度",value:`${n.waterCutWidth} mm`,color:"text-pink-300"}]:[],{icon:m.jsx(If,{size:14,className:"text-cyan-400"}),label:"时间",value:n.timestamp,color:"text-cyan-300"}];',
-        ),
-        (
             "isWaterCutEnabled:X&&se[c]?DC(se[c],X.index):!1,onConfirm:Gn,onRetry:Xn}),m.jsx(Hte,{",
             "isWaterCutEnabled:X&&se[c]?DC(se[c],X.index):!1,isRoundBreadEnabled:X&&se[c]?RBr(se[c],X.index):!1,onConfirm:Gn,onRetry:Xn}),m.jsx(Hte,{",
         ),
@@ -220,6 +341,7 @@ def patch(content: str) -> str:
         raise RuntimeError("RBr helper missing after patch")
 
     content = _patch_bo(content)
+    content = _patch_ute_out_of_range(content)
     return content
 
 

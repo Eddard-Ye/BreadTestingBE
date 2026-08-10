@@ -208,8 +208,59 @@ UTE_VALUE_SPAN_OLD = (
 )
 UTE_VALUE_SPAN_NEW = (
     'm.jsxs("span",{className:`text-sm ${d.outOfRange?"font-bold":"font-medium"} ${d.color} '
+    'drop-shadow-[0_0_6px_currentColor]`,children:[d.value,d.outOfRange?" (超出范围)":null]})'
+)
+UTE_VALUE_SPAN_OOR_OLD = (
+    'm.jsxs("span",{className:`text-sm ${d.outOfRange?"font-bold":"font-medium"} ${d.color} '
     'drop-shadow-[0_0_6px_currentColor]`,children:[d.value,d.outOfRange?m.jsx("span",{className:"ml-2 text-xs font-bold",'
     'children:"超出范围"}):null]})'
+)
+
+KANBAN_WC_INC_HEADER_OLD = (
+    '{icon:m.jsx(Rf,{size:11,className:"text-emerald-400"}),label:"高 (mm)",cls:"flex-1"},'
+    '{icon:m.jsx(Df,{size:11,className:"text-pink-400"}),label:"水切 (mm)",cls:"flex-1"},'
+    '{icon:m.jsx(If,{size:11,className:"text-cyan-300"}),label:"时间",cls:"flex-[1.5]"}].map(({icon:k,label:R,cls:q})'
+)
+KANBAN_WC_INC_HEADER_NEW = (
+    '{icon:m.jsx(Rf,{size:11,className:"text-emerald-400"}),label:"高 (mm)",cls:"flex-1"},'
+    '...(e?[{icon:m.jsx(Df,{size:11,className:"text-pink-400"}),label:"水切 (mm)",cls:"flex-1"}]:[]),'
+    '{icon:m.jsx(If,{size:11,className:"text-cyan-300"}),label:"时间",cls:"flex-[1.5]"}].map(({icon:k,label:R,cls:q})'
+)
+KANBAN_WC_INC_ROW_OLD = (
+    'm.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.height||"-"}),'
+    'm.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:e&&k.type==="product"&&k.waterCutWidth||"-"}),'
+    'm.jsx("div",{className:"flex-[1.5] px-2 text-cyan-300 text-xs",children:k.timestamp||"-"})]},k.id)})})]}):'
+)
+KANBAN_WC_INC_ROW_NEW = (
+    'm.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.height||"-"}),'
+    '...(e?[m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.type==="product"&&k.waterCutWidth||"-"})]:[]),'
+    'm.jsx("div",{className:"flex-[1.5] px-2 text-cyan-300 text-xs",children:k.timestamp||"-"})]},k.id)})})]}):'
+)
+KANBAN_WC_FULL_HEADER_OLD = (
+    'm.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",'
+    'children:[m.jsx(Rf,{size:12,className:"text-emerald-400"}),"高 (mm)"]})}),'
+    'm.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",'
+    'children:[m.jsx(Df,{size:12,className:"text-pink-400"}),"水切宽度 (mm)"]})}),'
+    'm.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",'
+    'children:[m.jsx(If,{size:12,className:"text-cyan-300"}),"时间"]})})]})}),m.jsxs(mM,{children:[P.map(k=>'
+)
+KANBAN_WC_FULL_HEADER_NEW = (
+    'm.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",'
+    'children:[m.jsx(Rf,{size:12,className:"text-emerald-400"}),"高 (mm)"]})}),'
+    '...(e?[m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",'
+    'children:[m.jsx(Df,{size:12,className:"text-pink-400"}),"水切宽度 (mm)"]})})]:[]),'
+    'm.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",'
+    'children:[m.jsx(If,{size:12,className:"text-cyan-300"}),"时间"]})})]})}),m.jsxs(mM,{children:[P.map(k=>'
+)
+KANBAN_WC_FULL_ROW_OLD = (
+    'm.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.height||"-"}),'
+    'm.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:e&&k.type==="product"&&k.waterCutWidth||"-"}),'
+    'm.jsx(Ft,{className:"text-cyan-300 text-xs py-2",children:k.timestamp||"-"})]},k.id)}),P.length===0&&m.jsx(Di,{children:m.jsx(Ft,{colSpan:8,'
+)
+KANBAN_WC_FULL_ROW_NEW = (
+    'm.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.height||"-"}),'
+    '...(e?[m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.type==="product"&&k.waterCutWidth||"-"})]:[]),'
+    'm.jsx(Ft,{className:"text-cyan-300 text-xs py-2",children:k.timestamp||"-"})]},k.id)}),P.length===0&&m.jsx(Di,{children:m.jsx(Ft,{colSpan:6+(n!=null&&n.enableRoundBread?0:1)+(e?1:0),'
 )
 
 UTE_CALL_WITH_RB = (
@@ -223,8 +274,66 @@ UTE_CALL_WITH_RB_OOR = (
 )
 
 
+AUTH_NW_OLD = (
+    'function nw(){const e=sessionStorage.getItem(rw),t=sessionStorage.getItem(tp);'
+    'return!e||!t?null:Date.now()>=Number(t)?(cb(),null):e}'
+)
+AUTH_NW_NEW = 'function nw(){return sessionStorage.getItem(rw)}'
+
+AUTH_EXPIRY_RELOAD = (
+    'E.useEffect(()=>{Ez()&&t(!0)},[]),'
+    'E.useEffect(()=>{if(e)return Cz(()=>{cb(),window.location.reload()})},[e]);'
+)
+AUTH_EXPIRY_RELOAD_NEW = 'E.useEffect(()=>{Ez()&&t(!0)},[]);'
+
+
+def _patch_auth_no_expiry(content: str) -> str:
+    if AUTH_NW_NEW in content and AUTH_EXPIRY_RELOAD not in content and AUTH_EXPIRY_RELOAD_NEW in content:
+        return content
+
+    if AUTH_NW_OLD in content:
+        content = content.replace(AUTH_NW_OLD, AUTH_NW_NEW, 1)
+    elif AUTH_NW_NEW not in content:
+        raise RuntimeError("Auth nw() marker not found")
+
+    if AUTH_EXPIRY_RELOAD in content:
+        content = content.replace(AUTH_EXPIRY_RELOAD, AUTH_EXPIRY_RELOAD_NEW, 1)
+    elif 'Cz(()=>{cb(),window.location.reload()})' in content:
+        raise RuntimeError("Broken auth expiry reload marker after partial patch")
+
+    return content
+
+
+def _patch_ute_oor_format(content: str) -> str:
+    if UTE_VALUE_SPAN_NEW in content:
+        return content
+    if UTE_VALUE_SPAN_OOR_OLD in content:
+        return content.replace(UTE_VALUE_SPAN_OOR_OLD, UTE_VALUE_SPAN_NEW, 1)
+    if UTE_VALUE_SPAN_OLD in content:
+        return content
+    raise RuntimeError("Ute out-of-range value span marker not found for format patch")
+
+
+def _patch_kanban_water_cut(content: str) -> str:
+    if '...(e?[{icon:m.jsx(Df,{size:11,className:"text-pink-400"}),label:"水切 (mm)"' in content:
+        return content
+
+    for old, new in (
+        (KANBAN_WC_INC_HEADER_OLD, KANBAN_WC_INC_HEADER_NEW),
+        (KANBAN_WC_INC_ROW_OLD, KANBAN_WC_INC_ROW_NEW),
+        (KANBAN_WC_FULL_HEADER_OLD, KANBAN_WC_FULL_HEADER_NEW),
+        (KANBAN_WC_FULL_ROW_OLD, KANBAN_WC_FULL_ROW_NEW),
+    ):
+        if new in content:
+            continue
+        if old not in content:
+            raise RuntimeError(f"Kanban water-cut patch target not found: {old[:120]}...")
+        content = content.replace(old, new, 1)
+    return content
+
+
 def _patch_ute_out_of_range(content: str) -> str:
-    if "超出范围" in content and "function UteSP(" in content:
+    if "function UteSP(" in content and UTE_VALUE_SPAN_NEW in content:
         return content
 
     if "function UteSP(" not in content:
@@ -233,9 +342,10 @@ def _patch_ute_out_of_range(content: str) -> str:
         content = content.replace(UTE_DTE_MARKER, UTE_HELPERS + UTE_DTE_MARKER, 1)
 
     if UTE_VALUE_SPAN_NEW not in content:
-        if UTE_VALUE_SPAN_OLD not in content:
+        if UTE_VALUE_SPAN_OLD in content:
+            content = content.replace(UTE_VALUE_SPAN_OLD, UTE_VALUE_SPAN_NEW, 1)
+        elif UTE_VALUE_SPAN_OOR_OLD not in content and "function UteSP(" not in content:
             raise RuntimeError("Ute value span marker not found")
-        content = content.replace(UTE_VALUE_SPAN_OLD, UTE_VALUE_SPAN_NEW, 1)
 
     if UTE_HEADER_WITH_OOR not in content:
         for old_header in (UTE_HEADER_RB_NO_OOR, UTE_HEADER_BASE):
@@ -290,19 +400,19 @@ def patch(content: str) -> str:
         ),
         (
             '{icon:m.jsx($f,{size:11,className:"text-blue-400"}),label:"长 (mm)",cls:"flex-1"},{icon:m.jsx(Mf,{size:11,className:"text-purple-400"}),label:"宽 (mm)",cls:"flex-1"},{icon:m.jsx(Rf,{size:11,className:"text-emerald-400"}),label:"高 (mm)",cls:"flex-1"},{icon:m.jsx(Df,{size:11,className:"text-pink-400"}),label:"水切 (mm)",cls:"flex-1"},{icon:m.jsx(If,{size:11,className:"text-cyan-300"}),label:"时间",cls:"flex-[1.5]"}].map(({icon:k,label:R,cls:q})=>m.jsxs("div",{className:`${q} flex items-center gap-1 py-1.5 px-2`,children:[k,R]},R))}),m.jsx("div",{className:"flex-1 min-h-0 flex flex-col overflow-y-auto",children:g.length===0?',
-            '...(n!=null&&n.enableRoundBread?[{icon:m.jsx($f,{size:11,className:"text-blue-400"}),label:"直径 (mm)",cls:"flex-1"}]:[{icon:m.jsx($f,{size:11,className:"text-blue-400"}),label:"长 (mm)",cls:"flex-1"},{icon:m.jsx(Mf,{size:11,className:"text-purple-400"}),label:"宽 (mm)",cls:"flex-1"}]),{icon:m.jsx(Rf,{size:11,className:"text-emerald-400"}),label:"高 (mm)",cls:"flex-1"},{icon:m.jsx(Df,{size:11,className:"text-pink-400"}),label:"水切 (mm)",cls:"flex-1"},{icon:m.jsx(If,{size:11,className:"text-cyan-300"}),label:"时间",cls:"flex-[1.5]"}].map(({icon:k,label:R,cls:q})=>m.jsxs("div",{className:`${q} flex items-center gap-1 py-1.5 px-2`,children:[k,R]},R))}),m.jsx("div",{className:"flex-1 min-h-0 flex flex-col overflow-y-auto",children:g.length===0?',
+            '...(n!=null&&n.enableRoundBread?[{icon:m.jsx($f,{size:11,className:"text-blue-400"}),label:"直径 (mm)",cls:"flex-1"}]:[{icon:m.jsx($f,{size:11,className:"text-blue-400"}),label:"长 (mm)",cls:"flex-1"},{icon:m.jsx(Mf,{size:11,className:"text-purple-400"}),label:"宽 (mm)",cls:"flex-1"}]),{icon:m.jsx(Rf,{size:11,className:"text-emerald-400"}),label:"高 (mm)",cls:"flex-1"},...(e?[{icon:m.jsx(Df,{size:11,className:"text-pink-400"}),label:"水切 (mm)",cls:"flex-1"}]:[]),{icon:m.jsx(If,{size:11,className:"text-cyan-300"}),label:"时间",cls:"flex-[1.5]"}].map(({icon:k,label:R,cls:q})=>m.jsxs("div",{className:`${q} flex items-center gap-1 py-1.5 px-2`,children:[k,R]},R))}),m.jsx("div",{className:"flex-1 min-h-0 flex flex-col overflow-y-auto",children:g.length===0?',
         ),
         (
             'm.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.length||"-"}),m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.width||"-"}),m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.height||"-"}),m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:e&&k.type==="product"&&k.waterCutWidth||"-"}),m.jsx("div",{className:"flex-[1.5] px-2 text-cyan-300 text-xs",children:k.timestamp||"-"})]},k.id)})})]}):',
-            '...(n!=null&&n.enableRoundBread?[m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.length||"-"})]:[m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.length||"-"}),m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.width||"-"})]),m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.height||"-"}),m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:e&&k.type==="product"&&k.waterCutWidth||"-"}),m.jsx("div",{className:"flex-[1.5] px-2 text-cyan-300 text-xs",children:k.timestamp||"-"})]},k.id)})})]}):',
+            '...(n!=null&&n.enableRoundBread?[m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.length||"-"})]:[m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.length||"-"}),m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.width||"-"})]),m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.height||"-"}),...(e?[m.jsx("div",{className:"flex-1 px-2 text-cyan-100 text-xs",children:k.type==="product"&&k.waterCutWidth||"-"})]:[]),m.jsx("div",{className:"flex-[1.5] px-2 text-cyan-300 text-xs",children:k.timestamp||"-"})]},k.id)})})]}):',
         ),
         (
             'm.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx($f,{size:12,className:"text-blue-400"}),"长 (mm)"]})}),m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx(Mf,{size:12,className:"text-purple-400"}),"宽 (mm)"]})}),m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx(Rf,{size:12,className:"text-emerald-400"}),"高 (mm)"]})}),m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx(Df,{size:12,className:"text-pink-400"}),"水切宽度 (mm)"]})}),',
-            '...(n!=null&&n.enableRoundBread?[m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx($f,{size:12,className:"text-blue-400"}),"直径 (mm)"]})})]:[m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx($f,{size:12,className:"text-blue-400"}),"长 (mm)"]})}),m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx(Mf,{size:12,className:"text-purple-400"}),"宽 (mm)"]})})]),m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx(Rf,{size:12,className:"text-emerald-400"}),"高 (mm)"]})}),m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx(Df,{size:12,className:"text-pink-400"}),"水切宽度 (mm)"]})}),',
+            '...(n!=null&&n.enableRoundBread?[m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx($f,{size:12,className:"text-blue-400"}),"直径 (mm)"]})})]:[m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx($f,{size:12,className:"text-blue-400"}),"长 (mm)"]})}),m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx(Mf,{size:12,className:"text-purple-400"}),"宽 (mm)"]})})]),m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx(Rf,{size:12,className:"text-emerald-400"}),"高 (mm)"]})}),...(e?[m.jsx(cr,{className:"text-cyan-300 text-xs font-semibold",children:m.jsxs("span",{className:"flex items-center gap-1",children:[m.jsx(Df,{size:12,className:"text-pink-400"}),"水切宽度 (mm)"]})})]:[]),',
         ),
         (
-            'm.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.length||"-"}),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.width||"-"}),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.height||"-"}),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:e&&k.type==="product"&&k.waterCutWidth||"-"}),m.jsx(Ft,{className:"text-cyan-300 text-xs py-2",children:k.timestamp||"-"})]},k.id)}),P.length===0&&m.jsx(Di,{children:m.jsx',
-            '...(n!=null&&n.enableRoundBread?[m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.length||"-"})]:[m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.length||"-"}),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.width||"-"})]),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.height||"-"}),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:e&&k.type==="product"&&k.waterCutWidth||"-"}),m.jsx(Ft,{className:"text-cyan-300 text-xs py-2",children:k.timestamp||"-"})]},k.id)}),P.length===0&&m.jsx(Di,{children:m.jsx',
+            'm.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.length||"-"}),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.width||"-"}),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.height||"-"}),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:e&&k.type==="product"&&k.waterCutWidth||"-"}),m.jsx(Ft,{className:"text-cyan-300 text-xs py-2",children:k.timestamp||"-"})]},k.id)}),P.length===0&&m.jsx(Di,{children:m.jsx(Ft,{colSpan:8,className:"text-center text-cyan-300 py-8",children:"暂无数据记录"})})]})]})})]})}',
+            '...(n!=null&&n.enableRoundBread?[m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.length||"-"})]:[m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.length||"-"}),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.width||"-"})]),m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.height||"-"}),...(e?[m.jsx(Ft,{className:"text-cyan-100 text-xs py-2",children:k.type==="product"&&k.waterCutWidth||"-"})]:[]),m.jsx(Ft,{className:"text-cyan-300 text-xs py-2",children:k.timestamp||"-"})]},k.id)}),P.length===0&&m.jsx(Di,{children:m.jsx(Ft,{colSpan:6+(n!=null&&n.enableRoundBread?0:1)+(e?1:0),className:"text-center text-cyan-300 py-8",children:"暂无数据记录"})})]})]})})]})}',
         ),
         (
             "isWaterCutEnabled:X&&se[c]?DC(se[c],X.index):!1,onConfirm:Gn,onRetry:Xn}),m.jsx(Hte,{",
@@ -342,6 +452,9 @@ def patch(content: str) -> str:
 
     content = _patch_bo(content)
     content = _patch_ute_out_of_range(content)
+    content = _patch_ute_oor_format(content)
+    content = _patch_kanban_water_cut(content)
+    content = _patch_auth_no_expiry(content)
     return content
 
 

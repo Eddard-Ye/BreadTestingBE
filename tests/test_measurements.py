@@ -230,9 +230,9 @@ def test_export_measurements_xlsx(client: TestClient) -> None:
     assert product_temperature.cell(row=4, column=18).value == "公差上限 USL"
     assert product_temperature.cell(row=4, column=19).value == 30
     assert product_temperature.cell(row=5, column=19).value == 20
-    assert str(product_temperature.cell(row=4, column=20).value).startswith("=MAXIFS(")
+    assert str(product_temperature.cell(row=4, column=20).value).startswith("=MAX(")
     assert product_temperature.cell(row=6, column=20).value == "=(T4+T5)/2"
-    assert str(product_temperature.cell(row=8, column=20).value).startswith("=AVERAGEIF(")
+    assert str(product_temperature.cell(row=8, column=20).value).startswith("=AVERAGE(")
 
 
 def test_export_measurements_respects_time_filter(client: TestClient) -> None:

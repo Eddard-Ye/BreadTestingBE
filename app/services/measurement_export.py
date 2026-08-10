@@ -155,8 +155,8 @@ def _metric_cell_value(raw: str) -> int | float | None:
     return _format_sum(_parse_numeric(raw))
 
 
-def _mean_nonzero_formula(data_range: str) -> str:
-    return f'=AVERAGEIF({data_range},"<>0")'
+def _mean_formula(data_range: str) -> str:
+    return f"=AVERAGE({data_range})"
 
 
 def _stdev_formula(data_range: str) -> str:
@@ -164,12 +164,12 @@ def _stdev_formula(data_range: str) -> str:
     return f"=STDEV({data_range})"
 
 
-def _max_nonzero_formula(data_range: str) -> str:
-    return f'=MAXIFS({data_range},{data_range},"<>0")'
+def _max_formula(data_range: str) -> str:
+    return f"=MAX({data_range})"
 
 
-def _min_nonzero_formula(data_range: str) -> str:
-    return f'=MINIFS({data_range},{data_range},"<>0")'
+def _min_formula(data_range: str) -> str:
+    return f"=MIN({data_range})"
 
 
 def _column_data_range(column: int, last_data_row: int) -> str:
@@ -237,22 +237,22 @@ def _append_single_stats_table(
     if usl is not None and lsl is not None:
         usl_input: str | float | None = usl
         lsl_input: str | float | None = lsl
-        usl_value_formula = _max_nonzero_formula(data_range)
-        lsl_value_formula = _min_nonzero_formula(data_range)
+        usl_value_formula = _max_formula(data_range)
+        lsl_value_formula = _min_formula(data_range)
         usl_spec_ref = usl_input_ref
         lsl_spec_ref = lsl_input_ref
     else:
         usl_input = "数据最大值"
         lsl_input = "数据最小值"
-        usl_value_formula = _max_nonzero_formula(data_range)
-        lsl_value_formula = _min_nonzero_formula(data_range)
+        usl_value_formula = _max_formula(data_range)
+        lsl_value_formula = _min_formula(data_range)
         usl_spec_ref = usl_value_ref
         lsl_spec_ref = lsl_value_ref
 
-    mean_formula = _mean_nonzero_formula(data_range)
+    mean_formula = _mean_formula(data_range)
     stdev_formula = _stdev_formula(data_range)
-    max_formula = _max_nonzero_formula(data_range)
-    min_formula = _min_nonzero_formula(data_range)
+    max_formula = _max_formula(data_range)
+    min_formula = _min_formula(data_range)
 
     rows: list[tuple[str, str | float | None, str | None, bool]] = [
         ("公差上限 USL", usl_input, usl_value_formula, False),

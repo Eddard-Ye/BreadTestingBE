@@ -202,7 +202,7 @@ def test_export_measurements_xlsx(client: TestClient) -> None:
     assert workbook.sheetnames[0] == "底稿"
     assert "成品-温度" in workbook.sheetnames
     product_temperature = workbook["成品-温度"]
-    assert product_temperature.max_row == 18  # header + 1 batch row + blank + stats table
+    assert product_temperature.max_row == 19  # header + 1 batch row + blank + title + stats table
     assert [product_temperature.cell(row=1, column=col).value for col in range(1, 17)] == [
         "批次号",
         "开始时间",
@@ -227,12 +227,13 @@ def test_export_measurements_xlsx(client: TestClient) -> None:
     assert data_row[2:14] == [24.5] * 12
     assert data_row[14] == 24.5 * 12
     assert data_row[15] is None
-    assert product_temperature.cell(row=4, column=18).value == "公差上限 USL"
-    assert product_temperature.cell(row=4, column=19).value == 30
-    assert product_temperature.cell(row=5, column=19).value == 20
-    assert str(product_temperature.cell(row=4, column=20).value).startswith("=MAX(")
-    assert product_temperature.cell(row=6, column=20).value == "=(T4+T5)/2"
-    assert str(product_temperature.cell(row=8, column=20).value).startswith("=AVERAGE(")
+    assert str(product_temperature.cell(row=4, column=18).value).endswith("-单打温度")
+    assert product_temperature.cell(row=5, column=18).value == "公差上限 USL"
+    assert product_temperature.cell(row=5, column=19).value == 30
+    assert product_temperature.cell(row=6, column=19).value == 20
+    assert str(product_temperature.cell(row=5, column=20).value).startswith("=MAX(")
+    assert product_temperature.cell(row=7, column=20).value == "=(T5+T6)/2"
+    assert str(product_temperature.cell(row=9, column=20).value).startswith("=AVERAGE(")
 
 
 def test_export_measurements_respects_time_filter(client: TestClient) -> None:
@@ -266,4 +267,4 @@ def test_export_measurements_respects_time_filter(client: TestClient) -> None:
     from openpyxl import load_workbook
 
     workbook = load_workbook(BytesIO(response.content))
-    assert workbook["成品-温度"].max_row == 18  # header + 1 row + blank + stats table
+    assert workbook["成品-温度"].max_row == 19  # header + 1 row + blank + title + stats table

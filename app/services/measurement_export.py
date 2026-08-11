@@ -193,6 +193,7 @@ def _append_single_stats_table(
     stats_start_row: int,
     start_col: int,
     data_range: str,
+    title: str | None = None,
     usl: float | None = None,
     lsl: float | None = None,
 ) -> int:
@@ -205,21 +206,25 @@ def _append_single_stats_table(
     input_col = start_col + 1
     value_col = start_col + 2
     red_label = Font(color="FF0000")
+    content_start_row = stats_start_row + (1 if title else 0)
 
-    usl_row = stats_start_row
-    lsl_row = stats_start_row + 1
-    u_row = stats_start_row + 2
-    t_row = stats_start_row + 3
-    mean_row = stats_start_row + 4
-    stdev_row = stats_start_row + 5
-    max_row = stats_start_row + 6
-    min_row = stats_start_row + 7
-    cpku_row = stats_start_row + 8
-    cpkl_row = stats_start_row + 9
-    cpk_row = stats_start_row + 10
-    cp_row = stats_start_row + 12
-    ca_row = stats_start_row + 13
-    cpk2_row = stats_start_row + 14
+    if title:
+        worksheet.cell(row=stats_start_row, column=label_col, value=title)
+
+    usl_row = content_start_row
+    lsl_row = content_start_row + 1
+    u_row = content_start_row + 2
+    t_row = content_start_row + 3
+    mean_row = content_start_row + 4
+    stdev_row = content_start_row + 5
+    max_row = content_start_row + 6
+    min_row = content_start_row + 7
+    cpku_row = content_start_row + 8
+    cpkl_row = content_start_row + 9
+    cpk_row = content_start_row + 10
+    cp_row = content_start_row + 12
+    ca_row = content_start_row + 13
+    cpk2_row = content_start_row + 14
 
     usl_input_ref = _cell_ref(usl_row, input_col)
     lsl_input_ref = _cell_ref(lsl_row, input_col)
@@ -277,8 +282,8 @@ def _append_single_stats_table(
         ("Cpk", "Cp * (1 - |Ca|)", f"={cp_ref}*(1-ABS({ca_ref}))", True),
     ]
 
-    stats_end_row = stats_start_row + len(rows) - 1
-    current_row = stats_start_row
+    stats_end_row = content_start_row + len(rows) - 1
+    current_row = content_start_row
     for label, hint, formula, is_red in rows:
         label_cell = worksheet.cell(row=current_row, column=label_col, value=label or None)
         if is_red:
@@ -300,7 +305,24 @@ def _append_single_stats_table(
         for col in range(label_col, value_col + 1):
             worksheet.cell(row=row, column=col).border = stats_border
 
+    if title:
+        worksheet.merge_cells(
+            start_row=stats_start_row,
+            start_column=label_col,
+            end_row=stats_start_row,
+            end_column=value_col,
+        )
+
     return stats_end_row
+
+
+def _spc_table_title(
+    recipe_name: str | None,
+    aggregate_label: str,
+    metric_label: str,
+) -> str:
+    prefix = f"{recipe_name}-" if recipe_name else ""
+    return f"{prefix}{aggregate_label}{metric_label}"
 
 
 def _append_spc_stats_tables(
@@ -311,6 +333,8 @@ def _append_spc_stats_tables(
     batch_total_col: int,
     sample_first_col: int,
     sample_last_col: int,
+    metric_label: str,
+    recipe_name: str | None = None,
     recipe_usl: float | None = None,
     recipe_lsl: float | None = None,
 ) -> None:
@@ -323,17 +347,18 @@ def _append_spc_stats_tables(
     batch_range = _column_data_range(batch_total_col, last_data_row)
     sample_range = _rect_data_range(sample_first_col, sample_last_col, last_data_row)
 
-    table_specs: list[tuple[str, float | None, float | None]] = [
-        (tier_range, recipe_usl, recipe_lsl),
-        (batch_range, recipe_usl, recipe_lsl),
-        (sample_range, recipe_usl, recipe_lsl),
+    table_specs: list[tuple[str, str, float | None, float | None]] = [
+        ("单打", tier_range, recipe_usl, recipe_lsl),
+        ("单批", batch_range, recipe_usl, recipe_lsl),
+        ("单值", sample_range, recipe_usl, recipe_lsl),
     ]
-    for offset, (data_range, usl, lsl) in enumerate(table_specs):
+    for offset, (aggregate_label, data_range, usl, lsl) in enumerate(table_specs):
         _append_single_stats_table(
             worksheet,
             stats_start_row=stats_start_row,
             start_col=first_table_col + offset * table_stride,
             data_range=data_range,
+            title=_spc_table_title(recipe_name, aggregate_label, metric_label),
             usl=usl,
             lsl=lsl,
         )
@@ -459,6 +484,8 @@ def _append_metric_sheet(
         batch_total_col=batch_total_col,
         sample_first_col=sample_first_col,
         sample_last_col=sample_last_col,
+        metric_label=metric_label,
+        recipe_name=recipe.name if recipe is not None else None,
         recipe_usl=recipe_usl,
         recipe_lsl=recipe_lsl,
     )

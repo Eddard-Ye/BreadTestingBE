@@ -153,8 +153,8 @@ UTE_RECORD_NAME_OLD = (
     'children:[m.jsx(Xl,{size:11}),r]})'
 )
 UTE_RECORD_NAME_NEW = (
-    'children:"确认录入数据"}),m.jsxs("p",{className:"text-red-500 font-bold text-2xl mt-1 flex items-center gap-1.5",'
-    'children:[m.jsx(Xl,{size:18,className:"text-red-500 shrink-0"}),r]})'
+    'children:"确认录入数据"}),m.jsxs("p",{className:"text-red-400 font-bold text-2xl mt-1 flex items-center gap-1.5",'
+    'children:[m.jsx(Xl,{size:18,className:"text-red-400 shrink-0"}),r]})'
 )
 
 UTE_DTE_MARKER = (

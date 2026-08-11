@@ -148,6 +148,15 @@ UTE_HELPERS = (
     'return Number.isNaN(r)?!1:r<e.min||r>e.max}'
 )
 
+UTE_RECORD_NAME_OLD = (
+    'children:"确认录入数据"}),m.jsxs("p",{className:"text-cyan-400/70 text-xs mt-0.5 flex items-center gap-1",'
+    'children:[m.jsx(Xl,{size:11}),r]})'
+)
+UTE_RECORD_NAME_NEW = (
+    'children:"确认录入数据"}),m.jsxs("p",{className:"text-red-500 font-bold text-2xl mt-1 flex items-center gap-1.5",'
+    'children:[m.jsx(Xl,{size:18,className:"text-red-500 shrink-0"}),r]})'
+)
+
 UTE_DTE_MARKER = (
     'function Dte(e,t){const r=l1(e,t);return(r==null?void 0:r.recordType)==="bottom"?'
     'e.bottomParams.heightCalcMode||"peak"'
@@ -332,6 +341,14 @@ def _patch_kanban_water_cut(content: str) -> str:
     return content
 
 
+def _patch_ute_record_name_style(content: str) -> str:
+    if UTE_RECORD_NAME_NEW in content:
+        return content
+    if UTE_RECORD_NAME_OLD not in content:
+        raise RuntimeError("Ute record name header marker not found")
+    return content.replace(UTE_RECORD_NAME_OLD, UTE_RECORD_NAME_NEW, 1)
+
+
 def _patch_ute_out_of_range(content: str) -> str:
     if "function UteSP(" in content and UTE_VALUE_SPAN_NEW in content:
         return content
@@ -453,6 +470,7 @@ def patch(content: str) -> str:
     content = _patch_bo(content)
     content = _patch_ute_out_of_range(content)
     content = _patch_ute_oor_format(content)
+    content = _patch_ute_record_name_style(content)
     content = _patch_kanban_water_cut(content)
     content = _patch_auth_no_expiry(content)
     return content

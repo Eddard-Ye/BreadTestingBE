@@ -1,6 +1,7 @@
 from datetime import datetime
 from io import BytesIO
 
+from openpyxl.cell.cell import MergedCell
 from openpyxl import load_workbook
 
 from app.schemas.measurement import MeasurementResponse
@@ -378,11 +379,15 @@ def test_build_measurements_xlsx_appends_stats_table_with_formulas() -> None:
     )
     sheet = workbook["成品-重量"]
 
-    stats_start = 5  # header + 2 data rows + blank row
+    title_row = 5  # header + 2 data rows + blank row
+    stats_start = title_row + 1
     tier_value_col = 9
     tier_input_col = 8
     batch_value_col = 13
     sample_value_col = 17
+    assert sheet.cell(row=title_row, column=7).value == "测试配方-单打重量"
+    assert sheet.cell(row=title_row, column=11).value == "测试配方-单批重量"
+    assert sheet.cell(row=title_row, column=15).value == "测试配方-单值重量"
     assert sheet.cell(row=stats_start, column=7).value == "公差上限 USL"
     assert sheet.cell(row=stats_start, column=tier_input_col).value == 150
     assert sheet.cell(row=stats_start + 1, column=tier_input_col).value == 100
@@ -400,11 +405,11 @@ def test_build_measurements_xlsx_appends_stats_table_with_formulas() -> None:
     assert sheet.cell(row=stats_start, column=sample_value_col).value == "=MAX(C2:C3)"
     assert sheet.cell(row=stats_start + 4, column=tier_value_col).value == "=AVERAGE(E2:E3)"
     assert sheet.cell(row=stats_start + 5, column=tier_value_col).value == "=STDEV(E2:E3)"
-    assert sheet.cell(row=stats_start + 2, column=tier_value_col).value == "=(I5+I6)/2"
-    assert sheet.cell(row=stats_start + 8, column=tier_value_col).value == "=(H5-I9)/(3*I10)"
+    assert sheet.cell(row=stats_start + 2, column=tier_value_col).value == "=(I6+I7)/2"
+    assert sheet.cell(row=stats_start + 8, column=tier_value_col).value == "=(H6-I10)/(3*I11)"
     assert sheet.cell(row=stats_start + 10, column=7).value == "CPK"
-    assert sheet.cell(row=stats_start + 10, column=tier_value_col).value == "=MIN(I13,I14)"
-    assert sheet.cell(row=stats_start + 14, column=tier_value_col).value == "=I17*(1-ABS(I18))"
+    assert sheet.cell(row=stats_start + 10, column=tier_value_col).value == "=MIN(I14,I15)"
+    assert sheet.cell(row=stats_start + 14, column=tier_value_col).value == "=I18*(1-ABS(I19))"
 
 
 def test_tier_totals_from_batch_totals_pairs_and_discards_trailing_odd_batch() -> None:
@@ -458,7 +463,8 @@ def test_build_measurements_xlsx_stats_table_has_black_border() -> None:
         )
     )
     sheet = workbook["成品-重量"]
-    stats_start = 5
+    title_row = 5
+    stats_start = title_row + 1
     table_ranges = (
         range(7, 10),
         range(11, 14),
@@ -466,9 +472,12 @@ def test_build_measurements_xlsx_stats_table_has_black_border() -> None:
     )
     stats_end = stats_start + 14
     for cols in table_ranges:
-        for row in range(stats_start, stats_end + 1):
+        for row in range(title_row, stats_end + 1):
             for col in cols:
-                border = sheet.cell(row=row, column=col).border
+                cell = sheet.cell(row=row, column=col)
+                if isinstance(cell, MergedCell):
+                    continue
+                border = cell.border
                 assert border.left.style == "thin"
                 assert border.right.style == "thin"
                 assert border.top.style == "thin"
@@ -510,7 +519,8 @@ def test_build_measurements_xlsx_stats_tables_use_data_derived_limits() -> None:
         )
     )
     sheet = workbook["底片-重量"]
-    stats_start = 4
+    stats_start = 5  # header + 1 data row + blank row + title row
+    assert sheet.cell(row=stats_start - 1, column=7).value == "测试配方-单打重量"
     assert sheet.cell(row=stats_start, column=8).value == 95
     assert sheet.cell(row=stats_start + 1, column=8).value == 80
     assert sheet.cell(row=stats_start, column=12).value == 95

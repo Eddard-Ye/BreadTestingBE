@@ -106,12 +106,31 @@ def _group_records_by_batch(
     return grouped
 
 
+def _export_metric_fields(
+    *,
+    enable_round_bread: bool,
+) -> tuple[tuple[str, str, str], ...]:
+    """Return metric columns/sheets to export, relabeling length as diameter for round bread."""
+    fields: list[tuple[str, str, str]] = []
+    for field, short_label, header in METRIC_FIELDS:
+        if enable_round_bread and field == "width":
+            continue
+        if enable_round_bread and field == "length":
+            fields.append((field, "直径", "直径(mm)"))
+        else:
+            fields.append((field, short_label, header))
+    return tuple(fields)
+
+
 def _should_include_metric(
     record_type: RecordType,
     field: str,
     *,
     enable_water_cut: bool,
+    enable_round_bread: bool,
 ) -> bool:
+    if enable_round_bread and field == "width":
+        return False
     if field != "water_cut_width":
         return True
     return enable_water_cut and record_type == "product"
@@ -200,7 +219,7 @@ def _append_single_stats_table(
     """Write one SPC stats block.
 
     When usl/lsl are given, col 2 holds recipe limits and col 3 USL/LSL
-    are computed from the table's data range. U/T use col 3; CPK formulas use col 2.
+    are computed from the table's data range. U/T also use col 2 limits; CPK formulas use col 2.
     """
     label_col = start_col
     input_col = start_col + 1
@@ -262,8 +281,8 @@ def _append_single_stats_table(
     rows: list[tuple[str, str | float | None, str | None, bool]] = [
         ("公差上限 USL", usl_input, usl_value_formula, False),
         ("公差下限 LSL", lsl_input, lsl_value_formula, False),
-        ("规格中心 U", "(USL + LSL) / 2", f"=({usl_value_ref}+{lsl_value_ref})/2", False),
-        ("规格公差 T", "USL - LSL", f"={usl_value_ref}-{lsl_value_ref}", False),
+        ("规格中心 U", "(USL + LSL) / 2", f"=({usl_spec_ref}+{lsl_spec_ref})/2", False),
+        ("规格公差 T", "USL - LSL", f"={usl_spec_ref}-{lsl_spec_ref}", False),
         ("X 平均值", "na", mean_formula, False),
         ("标准差 σ", "STDEV", stdev_formula, False),
         ("最大值", "MAX", max_formula, False),
@@ -325,6 +344,16 @@ def _spc_table_title(
     return f"{prefix}{aggregate_label}{metric_label}"
 
 
+def _scaled_recipe_limits(
+    usl: float | None,
+    lsl: float | None,
+    multiplier: float,
+) -> tuple[float | None, float | None]:
+    if usl is None or lsl is None:
+        return None, None
+    return usl * multiplier, lsl * multiplier
+
+
 def _append_spc_stats_tables(
     worksheet: Worksheet,
     *,
@@ -348,8 +377,8 @@ def _append_spc_stats_tables(
     sample_range = _rect_data_range(sample_first_col, sample_last_col, last_data_row)
 
     table_specs: list[tuple[str, str, float | None, float | None]] = [
-        ("单打", tier_range, recipe_usl, recipe_lsl),
-        ("单批", batch_range, recipe_usl, recipe_lsl),
+        ("单打", tier_range, *_scaled_recipe_limits(recipe_usl, recipe_lsl, 12)),
+        ("单批", batch_range, *_scaled_recipe_limits(recipe_usl, recipe_lsl, 6)),
         ("单值", sample_range, recipe_usl, recipe_lsl),
     ]
     for offset, (aggregate_label, data_range, usl, lsl) in enumerate(table_specs):
@@ -364,32 +393,45 @@ def _append_spc_stats_tables(
         )
 
 
-def _draft_sheet_header(*, enable_water_cut: bool) -> list[str]:
+def _draft_sheet_header(
+    *,
+    enable_water_cut: bool,
+    enable_round_bread: bool,
+) -> list[str]:
     header = [
         "批次号",
         "名称",
         "温度(°C)",
         "重量(g)",
-        "长(mm)",
-        "宽(mm)",
-        "高(mm)",
     ]
+    if enable_round_bread:
+        header.append("直径(mm)")
+    else:
+        header.extend(["长(mm)", "宽(mm)"])
+    header.append("高(mm)")
     if enable_water_cut:
         header.append("水切宽度(mm)")
     header.append("时间")
     return header
 
 
-def _draft_sheet_row(record: MeasurementResponse, *, enable_water_cut: bool) -> list[object]:
+def _draft_sheet_row(
+    record: MeasurementResponse,
+    *,
+    enable_water_cut: bool,
+    enable_round_bread: bool,
+) -> list[object]:
     row: list[object] = [
         record.batch_id,
         record.sample_name,
         record.temperature,
         record.weight,
-        record.length,
-        record.width,
-        record.height,
     ]
+    if enable_round_bread:
+        row.append(record.length)
+    else:
+        row.extend([record.length, record.width])
+    row.append(record.height)
     if enable_water_cut:
         row.append(
             record.water_cut_width
@@ -405,15 +447,27 @@ def _append_draft_sheet(
     records: list[MeasurementResponse],
     *,
     enable_water_cut: bool,
+    enable_round_bread: bool,
 ) -> None:
     """追加与数据汇总页表格一致的底稿 Sheet，置于 workbook 首位。"""
     worksheet = workbook.create_sheet(
         title=sanitize_sheet_title(DRAFT_SHEET_TITLE),
         index=0,
     )
-    worksheet.append(_draft_sheet_header(enable_water_cut=enable_water_cut))
+    worksheet.append(
+        _draft_sheet_header(
+            enable_water_cut=enable_water_cut,
+            enable_round_bread=enable_round_bread,
+        )
+    )
     for record in sorted(records, key=lambda item: item.recorded_at, reverse=True):
-        worksheet.append(_draft_sheet_row(record, enable_water_cut=enable_water_cut))
+        worksheet.append(
+            _draft_sheet_row(
+                record,
+                enable_water_cut=enable_water_cut,
+                enable_round_bread=enable_round_bread,
+            )
+        )
 
 
 def _append_metric_sheet(
@@ -509,11 +563,14 @@ def build_measurements_xlsx(
     for record in records:
         records_by_type[record.record_type].append(record)
 
+    enable_round_bread = recipe.enable_round_bread if recipe is not None else False
+
     if records:
         _append_draft_sheet(
             workbook,
             records,
             enable_water_cut=enable_water_cut,
+            enable_round_bread=enable_round_bread,
         )
 
     for record_type in ("product", "bottom", "middle"):
@@ -522,8 +579,15 @@ def build_measurements_xlsx(
             continue
 
         type_label = RECORD_TYPE_LABELS[record_type]
-        for field, short_label, _metric_header in METRIC_FIELDS:
-            if not _should_include_metric(record_type, field, enable_water_cut=enable_water_cut):
+        for field, short_label, _metric_header in _export_metric_fields(
+            enable_round_bread=enable_round_bread,
+        ):
+            if not _should_include_metric(
+                record_type,
+                field,
+                enable_water_cut=enable_water_cut,
+                enable_round_bread=enable_round_bread,
+            ):
                 continue
 
             sheet_title = sanitize_sheet_title(f"{type_label}-{short_label}")

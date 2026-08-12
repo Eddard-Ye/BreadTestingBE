@@ -229,10 +229,11 @@ def test_export_measurements_xlsx(client: TestClient) -> None:
     assert data_row[15] is None
     assert str(product_temperature.cell(row=4, column=18).value).endswith("-单打温度")
     assert product_temperature.cell(row=5, column=18).value == "公差上限 USL"
-    assert product_temperature.cell(row=5, column=19).value == 30
-    assert product_temperature.cell(row=6, column=19).value == 20
+    assert product_temperature.cell(row=5, column=19).value == 360
+    assert product_temperature.cell(row=6, column=19).value == 240
     assert str(product_temperature.cell(row=5, column=20).value).startswith("=MAX(")
-    assert product_temperature.cell(row=7, column=20).value == "=(T5+T6)/2"
+    assert product_temperature.cell(row=7, column=20).value == "=(S5+S6)/2"
+    assert product_temperature.cell(row=8, column=20).value == "=S5-S6"
     assert str(product_temperature.cell(row=9, column=20).value).startswith("=AVERAGE(")
 
 

@@ -157,6 +157,19 @@ UTE_RECORD_NAME_NEW = (
     'children:[m.jsx(Xl,{size:18,className:"text-red-400 shrink-0"}),r]})'
 )
 
+RECIPE_DETAIL_BOTTOM_LW_OLD = (
+    'm.jsxs("div",{className:"bg-slate-800/60 p-3 rounded-lg border border-cyan-400/20",children:[m.jsx("p",{className:"text-sm text-cyan-300",children:"底片长 (mm)"}),m.jsxs("p",{className:"text-cyan-50 font-medium",children:[r.bottomParams.length.min," ~ ",r.bottomParams.length.max]})]}),m.jsxs("div",{className:"bg-slate-800/60 p-3 rounded-lg border border-cyan-400/20",children:[m.jsx("p",{className:"text-sm text-cyan-300",children:"底片宽 (mm)"}),m.jsxs("p",{className:"text-cyan-50 font-medium",children:[r.bottomParams.width.min," ~ ",r.bottomParams.width.max]})]}),'
+)
+RECIPE_DETAIL_BOTTOM_LW_NEW = (
+    '...(r.enableRoundBread?[m.jsxs("div",{className:"bg-slate-800/60 p-3 rounded-lg border border-cyan-400/20",children:[m.jsx("p",{className:"text-sm text-cyan-300",children:"底片直径 (mm)"}),m.jsxs("p",{className:"text-cyan-50 font-medium",children:[r.bottomParams.length.min," ~ ",r.bottomParams.length.max]})]})]:[m.jsxs("div",{className:"bg-slate-800/60 p-3 rounded-lg border border-cyan-400/20",children:[m.jsx("p",{className:"text-sm text-cyan-300",children:"底片长 (mm)"}),m.jsxs("p",{className:"text-cyan-50 font-medium",children:[r.bottomParams.length.min," ~ ",r.bottomParams.length.max]})]}),m.jsxs("div",{className:"bg-slate-800/60 p-3 rounded-lg border border-cyan-400/20",children:[m.jsx("p",{className:"text-sm text-cyan-300",children:"底片宽 (mm)"}),m.jsxs("p",{className:"text-cyan-50 font-medium",children:[r.bottomParams.width.min," ~ ",r.bottomParams.width.max]})]})]),'
+)
+RECIPE_DETAIL_MIDDLE_LW_OLD = (
+    'm.jsxs("div",{className:"bg-slate-800/60 p-3 rounded-lg border border-cyan-400/20",children:[m.jsx("p",{className:"text-sm text-cyan-300",children:"中片长 (mm)"}),m.jsxs("p",{className:"text-cyan-50 font-medium",children:[r.middleParams.length.min," ~ ",r.middleParams.length.max]})]}),m.jsxs("div",{className:"bg-slate-800/60 p-3 rounded-lg border border-cyan-400/20",children:[m.jsx("p",{className:"text-sm text-cyan-300",children:"中片宽 (mm)"}),m.jsxs("p",{className:"text-cyan-50 font-medium",children:[r.middleParams.width.min," ~ ",r.middleParams.width.max]})]}),'
+)
+RECIPE_DETAIL_MIDDLE_LW_NEW = (
+    '...(r.enableRoundBread?[m.jsxs("div",{className:"bg-slate-800/60 p-3 rounded-lg border border-cyan-400/20",children:[m.jsx("p",{className:"text-sm text-cyan-300",children:"中片直径 (mm)"}),m.jsxs("p",{className:"text-cyan-50 font-medium",children:[r.middleParams.length.min," ~ ",r.middleParams.length.max]})]})]:[m.jsxs("div",{className:"bg-slate-800/60 p-3 rounded-lg border border-cyan-400/20",children:[m.jsx("p",{className:"text-sm text-cyan-300",children:"中片长 (mm)"}),m.jsxs("p",{className:"text-cyan-50 font-medium",children:[r.middleParams.length.min," ~ ",r.middleParams.length.max]})]}),m.jsxs("div",{className:"bg-slate-800/60 p-3 rounded-lg border border-cyan-400/20",children:[m.jsx("p",{className:"text-sm text-cyan-300",children:"中片宽 (mm)"}),m.jsxs("p",{className:"text-cyan-50 font-medium",children:[r.middleParams.width.min," ~ ",r.middleParams.width.max]})]})]),'
+)
+
 UTE_DTE_MARKER = (
     'function Dte(e,t){const r=l1(e,t);return(r==null?void 0:r.recordType)==="bottom"?'
     'e.bottomParams.heightCalcMode||"peak"'
@@ -349,6 +362,19 @@ def _patch_ute_record_name_style(content: str) -> str:
     return content.replace(UTE_RECORD_NAME_OLD, UTE_RECORD_NAME_NEW, 1)
 
 
+def _patch_recipe_detail_round_bread(content: str) -> str:
+    for old, new in (
+        (RECIPE_DETAIL_BOTTOM_LW_OLD, RECIPE_DETAIL_BOTTOM_LW_NEW),
+        (RECIPE_DETAIL_MIDDLE_LW_OLD, RECIPE_DETAIL_MIDDLE_LW_NEW),
+    ):
+        if new in content:
+            continue
+        if old not in content:
+            raise RuntimeError(f"Recipe detail round-bread patch target not found: {old[:120]}...")
+        content = content.replace(old, new, 1)
+    return content
+
+
 def _patch_ute_out_of_range(content: str) -> str:
     if "function UteSP(" in content and UTE_VALUE_SPAN_NEW in content:
         return content
@@ -471,6 +497,7 @@ def patch(content: str) -> str:
     content = _patch_ute_out_of_range(content)
     content = _patch_ute_oor_format(content)
     content = _patch_ute_record_name_style(content)
+    content = _patch_recipe_detail_round_bread(content)
     content = _patch_kanban_water_cut(content)
     content = _patch_auth_no_expiry(content)
     return content

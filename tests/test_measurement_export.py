@@ -389,12 +389,12 @@ def test_build_measurements_xlsx_appends_stats_table_with_formulas() -> None:
     assert sheet.cell(row=title_row, column=11).value == "测试配方-单批重量"
     assert sheet.cell(row=title_row, column=15).value == "测试配方-单值重量"
     assert sheet.cell(row=stats_start, column=7).value == "公差上限 USL"
-    assert sheet.cell(row=stats_start, column=tier_input_col).value == 150
-    assert sheet.cell(row=stats_start + 1, column=tier_input_col).value == 100
+    assert sheet.cell(row=stats_start, column=tier_input_col).value == 1800
+    assert sheet.cell(row=stats_start + 1, column=tier_input_col).value == 1200
     batch_input_col = 12
     sample_input_col = 16
-    assert sheet.cell(row=stats_start, column=batch_input_col).value == 150
-    assert sheet.cell(row=stats_start + 1, column=batch_input_col).value == 100
+    assert sheet.cell(row=stats_start, column=batch_input_col).value == 900
+    assert sheet.cell(row=stats_start + 1, column=batch_input_col).value == 600
     assert sheet.cell(row=stats_start, column=sample_input_col).value == 150
     assert sheet.cell(row=stats_start + 1, column=sample_input_col).value == 100
     assert sheet.cell(row=stats_start, column=tier_value_col).value == "=MAX(E2:E3)"
@@ -405,7 +405,8 @@ def test_build_measurements_xlsx_appends_stats_table_with_formulas() -> None:
     assert sheet.cell(row=stats_start, column=sample_value_col).value == "=MAX(C2:C3)"
     assert sheet.cell(row=stats_start + 4, column=tier_value_col).value == "=AVERAGE(E2:E3)"
     assert sheet.cell(row=stats_start + 5, column=tier_value_col).value == "=STDEV(E2:E3)"
-    assert sheet.cell(row=stats_start + 2, column=tier_value_col).value == "=(I6+I7)/2"
+    assert sheet.cell(row=stats_start + 2, column=tier_value_col).value == "=(H6+H7)/2"
+    assert sheet.cell(row=stats_start + 3, column=tier_value_col).value == "=H6-H7"
     assert sheet.cell(row=stats_start + 8, column=tier_value_col).value == "=(H6-I10)/(3*I11)"
     assert sheet.cell(row=stats_start + 10, column=7).value == "CPK"
     assert sheet.cell(row=stats_start + 10, column=tier_value_col).value == "=MIN(I14,I15)"
@@ -521,13 +522,126 @@ def test_build_measurements_xlsx_stats_tables_use_data_derived_limits() -> None:
     sheet = workbook["底片-重量"]
     stats_start = 5  # header + 1 data row + blank row + title row
     assert sheet.cell(row=stats_start - 1, column=7).value == "测试配方-单打重量"
-    assert sheet.cell(row=stats_start, column=8).value == 95
-    assert sheet.cell(row=stats_start + 1, column=8).value == 80
-    assert sheet.cell(row=stats_start, column=12).value == 95
-    assert sheet.cell(row=stats_start + 1, column=12).value == 80
+    assert sheet.cell(row=stats_start, column=8).value == 1140
+    assert sheet.cell(row=stats_start + 1, column=8).value == 960
+    assert sheet.cell(row=stats_start, column=12).value == 570
+    assert sheet.cell(row=stats_start + 1, column=12).value == 480
     assert sheet.cell(row=stats_start, column=16).value == 95
     assert sheet.cell(row=stats_start + 1, column=16).value == 80
     assert (
         sheet.cell(row=stats_start, column=13).value
         == "=MAX(D2:D2)"
     )
+
+
+def test_build_measurements_xlsx_round_bread_exports_diameter_not_length_width() -> None:
+    round_recipe = _EXPORT_TEST_RECIPE.model_copy(update={"enable_round_bread": True})
+    records = [
+        MeasurementResponse(
+            id="1",
+            batch_id=1,
+            recipe_id="roundA",
+            record_type="product",
+            slot_index=0,
+            sample_name="圆包-成品-1",
+            temperature="24.5",
+            weight="128.3",
+            length="100.0",
+            width="100.0",
+            height="29.8",
+            water_cut_width="0",
+            preview_name=None,
+            recorded_at=datetime(2026, 6, 22, 16, 32, 56),
+        ),
+        MeasurementResponse(
+            id="2",
+            batch_id=1,
+            recipe_id="roundA",
+            record_type="bottom",
+            slot_index=0,
+            sample_name="圆包-底片-1",
+            temperature="22.1",
+            weight="88.3",
+            length="91.2",
+            width="91.2",
+            height="28.8",
+            water_cut_width="0",
+            preview_name=None,
+            recorded_at=datetime(2026, 6, 22, 16, 33, 10),
+        ),
+        MeasurementResponse(
+            id="3",
+            batch_id=1,
+            recipe_id="roundA",
+            record_type="middle",
+            slot_index=0,
+            sample_name="圆包-中片-1",
+            temperature="23.0",
+            weight="90.0",
+            length="95.0",
+            width="95.0",
+            height="27.0",
+            water_cut_width="0",
+            preview_name=None,
+            recorded_at=datetime(2026, 6, 22, 16, 34, 0),
+        ),
+    ]
+    workbook = load_workbook(
+        BytesIO(
+            build_measurements_xlsx(
+                records,
+                enable_water_cut=False,
+                recipe=round_recipe,
+            )
+        )
+    )
+
+    draft = workbook["底稿"]
+    assert _row_values(draft, 1, 7) == [
+        "批次号",
+        "名称",
+        "温度(°C)",
+        "重量(g)",
+        "直径(mm)",
+        "高(mm)",
+        "时间",
+    ]
+    assert _row_values(draft, 2, 7) == [
+        1,
+        "圆包-中片-1",
+        "23.0",
+        "90.0",
+        "95.0",
+        "27.0",
+        "2026/06/22 16:34:00",
+    ]
+
+    assert "成品-直径" in workbook.sheetnames
+    assert "底片-直径" in workbook.sheetnames
+    assert "中片-直径" in workbook.sheetnames
+    assert "成品-长" not in workbook.sheetnames
+    assert "成品-宽" not in workbook.sheetnames
+    assert "底片-长" not in workbook.sheetnames
+    assert "底片-宽" not in workbook.sheetnames
+
+    product_diameter = workbook["成品-直径"]
+    assert _row_values(product_diameter, 1, 5) == [
+        "批次号",
+        "开始时间",
+        "直径1",
+        "单批直径",
+        "单打直径",
+    ]
+    assert _row_values(product_diameter, 2, 5) == [
+        1,
+        "2026/06/22 16:32:56",
+        100.0,
+        100.0,
+        None,
+    ]
+
+    bottom_diameter = workbook["底片-直径"]
+    stats_start = 5
+    assert bottom_diameter.cell(row=stats_start - 1, column=7).value == "测试配方-单打直径"
+    assert bottom_diameter.cell(row=stats_start, column=8).value == 1200
+    assert bottom_diameter.cell(row=stats_start + 1, column=8).value == 1020

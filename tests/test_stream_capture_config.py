@@ -113,6 +113,7 @@ def test_capture_measurement_forwards_height_calibration(
     assert captured["url"] == "http://10.0.0.8:9001/capture"
     assert captured["json"]["height_scale"] == 1.1
     assert captured["json"]["height_offset"] == 0.5
+    assert captured["json"]["lw_height_mm"] == 0.0
 
 
 def test_capture_measurement_uses_saved_stream_config(

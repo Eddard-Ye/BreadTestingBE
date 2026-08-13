@@ -12,6 +12,7 @@ NEW_RECIPE = {
     "enableWaterCut": True,
     "enableRoundBread": False,
     "heightCalcMode": "peak",
+    "lwHeightMm": 0.0,
     "enableBottomMeasurement": False,
     "bottomParams": {
         "batchSize": 0,
@@ -22,6 +23,7 @@ NEW_RECIPE = {
         "height": {"min": 0, "max": 0},
         "waterCutWidth": {"min": 0, "max": 0},
         "heightCalcMode": "peak",
+        "lwHeightMm": 0.0,
     },
     "enableMiddleMeasurement": False,
     "middleParams": {
@@ -33,6 +35,7 @@ NEW_RECIPE = {
         "height": {"min": 0, "max": 0},
         "waterCutWidth": {"min": 0, "max": 0},
         "heightCalcMode": "peak",
+        "lwHeightMm": 0.0,
     },
 }
 
@@ -69,6 +72,9 @@ def test_get_recipe(client: TestClient) -> None:
     assert data["batchSize"] == 4
     assert data["enableWaterCut"] is True
     assert data["enableRoundBread"] is False
+    assert data["lwHeightMm"] == 0.0
+    assert data["bottomParams"]["lwHeightMm"] == 0.0
+    assert data["middleParams"]["lwHeightMm"] == 0.0
 
 
 def test_get_recipe_not_found(client: TestClient) -> None:

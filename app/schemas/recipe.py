@@ -31,6 +31,8 @@ class SectionParams(BaseModel):
     height: RangeSpec
     water_cut_width: RangeSpec
     height_calc_mode: HeightCalcMode = DEFAULT_HEIGHT_CALC_MODE
+    # LxW 测量工作高度（mm），capture 时转发给视频后端；不影响物体高度 H。
+    lw_height_mm: float = Field(default=0.0)
 
 
 class RecipeBase(BaseModel):
@@ -47,6 +49,8 @@ class RecipeBase(BaseModel):
     enable_water_cut: bool = False
     enable_round_bread: bool = False
     height_calc_mode: HeightCalcMode = DEFAULT_HEIGHT_CALC_MODE
+    # LxW 测量工作高度（mm），capture 时转发给视频后端；不影响物体高度 H。
+    lw_height_mm: float = Field(default=0.0)
     enable_bottom_measurement: bool = False
     bottom_params: SectionParams
     enable_middle_measurement: bool = False

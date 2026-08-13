@@ -10,6 +10,8 @@ class CaptureMeasurementRequest(BaseModel):
     name: str = Field(min_length=1)
     water_cut: bool = False
     height_calc_mode: HeightCalcMode = DEFAULT_HEIGHT_CALC_MODE
+    # LxW 针孔换算工作高度（mm）；与物体高度 H 的校准参数相互独立。
+    lw_height_mm: float = Field(default=0.0)
 
 
 class CaptureMeasurementResponse(BaseModel):

@@ -79,6 +79,7 @@ def capture_measurement(
     name: str,
     water_cut: bool,
     height_calc_mode: HeightCalcMode = DEFAULT_HEIGHT_CALC_MODE,
+    lw_height_mm: float = 0.0,
 ) -> CaptureMeasurementResponse:
     """读取传感器并调用 capture_2d_stream 的 POST /capture 接口。"""
     temperature_reading = read_temperature()
@@ -99,6 +100,7 @@ def capture_measurement(
         "height_calc_mode": height_calc_mode,
         "height_scale": stream_config.height_scale,
         "height_offset": stream_config.height_offset,
+        "lw_height_mm": float(lw_height_mm),
     }
 
     try:

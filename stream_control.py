@@ -63,6 +63,12 @@ def main() -> int:
         default="peak",
         help="For capture, height calculation mode (peak or average).",
     )
+    parser.add_argument(
+        "--lw-height-mm",
+        type=float,
+        default=0.0,
+        help="For capture, LxW working height above plane in mm (default 0).",
+    )
     args = parser.parse_args()
 
     base = f"http://{args.host}:{args.port}"
@@ -86,6 +92,7 @@ def main() -> int:
                 "weight": args.weight,
                 "water_cut": bool(args.water_cut),
                 "height_calc_mode": args.height_calc_mode,
+                "lw_height_mm": float(args.lw_height_mm),
             },
         )
     else:

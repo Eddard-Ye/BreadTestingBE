@@ -119,8 +119,8 @@ def test_build_measurements_xlsx_creates_metric_sheets_per_type() -> None:
     assert _row_values(draft, 2, 8) == [
         1,
         "样品-底片-1",
-        "22.1",
-        "88.3",
+        "-",
+        "-",
         "91.2",
         "45.5",
         "28.8",
@@ -131,16 +131,22 @@ def test_build_measurements_xlsx_creates_metric_sheets_per_type() -> None:
         "样品-成品-1",
         "24.5",
         "128.3",
-        "101.2",
-        "49.5",
+        "-",
+        "-",
         "29.8",
         "2026/06/22 16:32:56",
     ]
 
     assert "成品-温度" in workbook.sheetnames
     assert "成品-重量" in workbook.sheetnames
-    assert "底片-温度" in workbook.sheetnames
-    assert "底片-重量" in workbook.sheetnames
+    assert "成品-高" in workbook.sheetnames
+    assert "成品-长" not in workbook.sheetnames
+    assert "成品-宽" not in workbook.sheetnames
+    assert "底片-温度" not in workbook.sheetnames
+    assert "底片-重量" not in workbook.sheetnames
+    assert "底片-长" in workbook.sheetnames
+    assert "底片-宽" in workbook.sheetnames
+    assert "底片-高" in workbook.sheetnames
     assert "成品-水切宽度" not in workbook.sheetnames
 
     product_temperature = workbook["成品-温度"]
@@ -307,8 +313,8 @@ def test_build_measurements_xlsx_includes_water_cut_for_product_when_enabled() -
         "样品-成品-1",
         "24.5",
         "128.3",
-        "101.2",
-        "49.5",
+        "-",
+        "-",
         "29.8",
         "42.5",
         "2026/06/22 16:32:56",
@@ -519,15 +525,16 @@ def test_build_measurements_xlsx_stats_tables_use_data_derived_limits() -> None:
             )
         )
     )
-    sheet = workbook["底片-重量"]
+    sheet = workbook["底片-高"]
     stats_start = 5  # header + 1 data row + blank row + title row
-    assert sheet.cell(row=stats_start - 1, column=7).value == "测试配方-单打重量"
-    assert sheet.cell(row=stats_start, column=8).value == 1140
-    assert sheet.cell(row=stats_start + 1, column=8).value == 960
-    assert sheet.cell(row=stats_start, column=12).value == 570
-    assert sheet.cell(row=stats_start + 1, column=12).value == 480
-    assert sheet.cell(row=stats_start, column=16).value == 95
-    assert sheet.cell(row=stats_start + 1, column=16).value == 80
+    assert sheet.cell(row=stats_start - 1, column=7).value == "测试配方-单打高"
+    # bottom height limits 20~28 → *12 / *6 / *1
+    assert sheet.cell(row=stats_start, column=8).value == 336
+    assert sheet.cell(row=stats_start + 1, column=8).value == 240
+    assert sheet.cell(row=stats_start, column=12).value == 168
+    assert sheet.cell(row=stats_start + 1, column=12).value == 120
+    assert sheet.cell(row=stats_start, column=16).value == 28
+    assert sheet.cell(row=stats_start + 1, column=16).value == 20
     assert (
         sheet.cell(row=stats_start, column=13).value
         == "=MAX(D2:D2)"
@@ -606,39 +613,49 @@ def test_build_measurements_xlsx_round_bread_exports_diameter_not_length_width()
         "高(mm)",
         "时间",
     ]
+    # Draft sorts by recorded_at descending.
     assert _row_values(draft, 2, 7) == [
         1,
         "圆包-中片-1",
-        "23.0",
-        "90.0",
+        "-",
+        "-",
         "95.0",
         "27.0",
         "2026/06/22 16:34:00",
     ]
+    assert _row_values(draft, 3, 7) == [
+        1,
+        "圆包-底片-1",
+        "-",
+        "-",
+        "91.2",
+        "28.8",
+        "2026/06/22 16:33:10",
+    ]
+    assert _row_values(draft, 4, 7) == [
+        1,
+        "圆包-成品-1",
+        "24.5",
+        "128.3",
+        "-",
+        "29.8",
+        "2026/06/22 16:32:56",
+    ]
 
-    assert "成品-直径" in workbook.sheetnames
+    assert "成品-直径" not in workbook.sheetnames
+    assert "成品-温度" in workbook.sheetnames
+    assert "成品-重量" in workbook.sheetnames
+    assert "成品-高" in workbook.sheetnames
     assert "底片-直径" in workbook.sheetnames
+    assert "底片-高" in workbook.sheetnames
+    assert "底片-温度" not in workbook.sheetnames
+    assert "底片-重量" not in workbook.sheetnames
     assert "中片-直径" in workbook.sheetnames
+    assert "中片-高" in workbook.sheetnames
     assert "成品-长" not in workbook.sheetnames
     assert "成品-宽" not in workbook.sheetnames
     assert "底片-长" not in workbook.sheetnames
     assert "底片-宽" not in workbook.sheetnames
-
-    product_diameter = workbook["成品-直径"]
-    assert _row_values(product_diameter, 1, 5) == [
-        "批次号",
-        "开始时间",
-        "直径1",
-        "单批直径",
-        "单打直径",
-    ]
-    assert _row_values(product_diameter, 2, 5) == [
-        1,
-        "2026/06/22 16:32:56",
-        100.0,
-        100.0,
-        None,
-    ]
 
     bottom_diameter = workbook["底片-直径"]
     stats_start = 5

@@ -12,6 +12,11 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from app.schemas.measurement import MeasurementResponse, RecordType
 from app.schemas.recipe import RecipeBase, SectionParams
+from app.services.measurement_metrics import (
+    is_metric_visible,
+    iter_visible_metric_fields,
+    mask_metric_value,
+)
 
 DRAFT_SHEET_TITLE = "底稿"
 
@@ -129,11 +134,12 @@ def _should_include_metric(
     enable_water_cut: bool,
     enable_round_bread: bool,
 ) -> bool:
-    if enable_round_bread and field == "width":
-        return False
-    if field != "water_cut_width":
-        return True
-    return enable_water_cut and record_type == "product"
+    return is_metric_visible(
+        record_type,
+        field,
+        enable_round_bread=enable_round_bread,
+        enable_water_cut=enable_water_cut,
+    )
 
 
 def _batch_start_time(batch_records: list[MeasurementResponse]) -> str:
@@ -169,9 +175,10 @@ def _limits_for_metric(
 
 def _metric_cell_value(raw: str) -> int | float | None:
     """Write parseable measurements as numbers so Excel stats formulas work."""
-    if not str(raw).strip():
+    text = str(raw).strip()
+    if not text or text == "-":
         return None
-    return _format_sum(_parse_numeric(raw))
+    return _format_sum(_parse_numeric(text))
 
 
 def _mean_formula(data_range: str) -> str:
@@ -421,23 +428,28 @@ def _draft_sheet_row(
     enable_water_cut: bool,
     enable_round_bread: bool,
 ) -> list[object]:
+    def cell(field: str) -> str:
+        return mask_metric_value(
+            record.record_type,
+            field,
+            getattr(record, field),
+            enable_round_bread=enable_round_bread,
+            enable_water_cut=enable_water_cut,
+        )
+
     row: list[object] = [
         record.batch_id,
         record.sample_name,
-        record.temperature,
-        record.weight,
+        cell("temperature"),
+        cell("weight"),
     ]
     if enable_round_bread:
-        row.append(record.length)
+        row.append(cell("length"))
     else:
-        row.extend([record.length, record.width])
-    row.append(record.height)
+        row.extend([cell("length"), cell("width")])
+    row.append(cell("height"))
     if enable_water_cut:
-        row.append(
-            record.water_cut_width
-            if record.record_type == "product"
-            else ""
-        )
+        row.append(cell("water_cut_width"))
     row.append(format_recorded_at(record.recorded_at))
     return row
 
@@ -579,17 +591,12 @@ def build_measurements_xlsx(
             continue
 
         type_label = RECORD_TYPE_LABELS[record_type]
-        for field, short_label, _metric_header in _export_metric_fields(
+        for field, short_label, _metric_header in iter_visible_metric_fields(
+            record_type,
+            _export_metric_fields(enable_round_bread=enable_round_bread),
             enable_round_bread=enable_round_bread,
+            enable_water_cut=enable_water_cut,
         ):
-            if not _should_include_metric(
-                record_type,
-                field,
-                enable_water_cut=enable_water_cut,
-                enable_round_bread=enable_round_bread,
-            ):
-                continue
-
             sheet_title = sanitize_sheet_title(f"{type_label}-{short_label}")
             _append_metric_sheet(
                 workbook,

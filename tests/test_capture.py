@@ -54,6 +54,7 @@ def test_capture_measurement_success(client: TestClient, monkeypatch) -> None:
                 "weight": "90.6g",
                 "water_cut": True,
                 "height_calc_mode": "peak",
+                "height_percentile": 50.0,
                 "height_scale": 1.0,
                 "height_offset": 0.0,
                 "lw_height_mm": 0.0,
@@ -152,3 +153,76 @@ def test_capture_measurement_water_cut_disabled(client: TestClient, monkeypatch)
     assert data["waterCutMm"] == "0"
     assert data["fileName"] == "bread1_20260625_003728.jpg"
     assert data["imagePreviewUrl"] == "/api/v1/capture/preview/bread1_20260625_003728.jpg"
+
+
+def test_capture_measurement_forwards_percentile(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.services.stream_capture_service.read_temperature",
+        lambda: MagicMock(value=25.0, connected=True),
+    )
+    monkeypatch.setattr(
+        "app.services.stream_capture_service.read_weight",
+        lambda: MagicMock(value=12.3, connected=True),
+    )
+
+    captured_payload: dict = {}
+
+    class FakeResponse:
+        content = b'{"ok": true, "length_mm": 100.0, "width_mm": 50.0, "height_mm": 28.0, "water_cut_mm": null}'
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {
+                "ok": True,
+                "fileName": "pct.jpg",
+                "length_mm": 100.0,
+                "width_mm": 50.0,
+                "height_mm": 28.0,
+                "water_cut_mm": None,
+            }
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args) -> None:
+            return None
+
+        def post(self, url: str, json: dict) -> FakeResponse:
+            captured_payload.update(json)
+            return FakeResponse()
+
+    monkeypatch.setattr("app.services.stream_capture_service.httpx.Client", FakeClient)
+
+    response = client.post(
+        "/api/v1/capture/measurement",
+        json={
+            "name": "测试配方-成品-1",
+            "waterCut": False,
+            "heightCalcMode": "percentile",
+            "heightPercentile": 80,
+        },
+    )
+    assert response.status_code == 200
+    assert captured_payload["height_calc_mode"] == "percentile"
+    assert captured_payload["height_percentile"] == 80.0
+    assert response.json()["height"] == "28.0"
+
+
+def test_capture_measurement_rejects_percentile_out_of_range(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/api/v1/capture/measurement",
+        json={
+            "name": "测试配方-成品-1",
+            "heightCalcMode": "percentile",
+            "heightPercentile": 120,
+        },
+    )
+    assert response.status_code == 422

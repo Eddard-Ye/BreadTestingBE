@@ -1,7 +1,11 @@
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-from app.schemas.recipe import DEFAULT_HEIGHT_CALC_MODE, HeightCalcMode
+from app.schemas.recipe import (
+    DEFAULT_HEIGHT_CALC_MODE,
+    DEFAULT_HEIGHT_PERCENTILE,
+    HeightCalcMode,
+)
 
 
 class CaptureMeasurementRequest(BaseModel):
@@ -10,6 +14,10 @@ class CaptureMeasurementRequest(BaseModel):
     name: str = Field(min_length=1)
     water_cut: bool = False
     height_calc_mode: HeightCalcMode = DEFAULT_HEIGHT_CALC_MODE
+    # 物理高度百分位 0–100；percentile 模式应传，其它模式可忽略。
+    height_percentile: float = Field(
+        default=DEFAULT_HEIGHT_PERCENTILE, ge=0, le=100
+    )
     # LxW 针孔换算工作高度（mm）；与物体高度 H 的校准参数相互独立。
     lw_height_mm: float = Field(default=0.0)
 

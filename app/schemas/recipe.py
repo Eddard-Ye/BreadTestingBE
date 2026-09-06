@@ -3,8 +3,9 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
-HeightCalcMode = Literal["peak", "average"]
+HeightCalcMode = Literal["peak", "average", "percentile"]
 DEFAULT_HEIGHT_CALC_MODE: HeightCalcMode = "peak"
+DEFAULT_HEIGHT_PERCENTILE: float = 50.0
 
 
 class RangeSpec(BaseModel):
@@ -31,6 +32,10 @@ class SectionParams(BaseModel):
     height: RangeSpec
     water_cut_width: RangeSpec
     height_calc_mode: HeightCalcMode = DEFAULT_HEIGHT_CALC_MODE
+    # 物理高度百分位（0=最低，50=中位，100=最高）；仅 percentile 模式参与计算。
+    height_percentile: float = Field(
+        default=DEFAULT_HEIGHT_PERCENTILE, ge=0, le=100
+    )
     # LxW 测量工作高度（mm），capture 时转发给视频后端；不影响物体高度 H。
     lw_height_mm: float = Field(default=0.0)
 
@@ -49,6 +54,10 @@ class RecipeBase(BaseModel):
     enable_water_cut: bool = False
     enable_round_bread: bool = False
     height_calc_mode: HeightCalcMode = DEFAULT_HEIGHT_CALC_MODE
+    # 物理高度百分位（0=最低，50=中位，100=最高）；仅 percentile 模式参与计算。
+    height_percentile: float = Field(
+        default=DEFAULT_HEIGHT_PERCENTILE, ge=0, le=100
+    )
     # LxW 测量工作高度（mm），capture 时转发给视频后端；不影响物体高度 H。
     lw_height_mm: float = Field(default=0.0)
     enable_bottom_measurement: bool = False

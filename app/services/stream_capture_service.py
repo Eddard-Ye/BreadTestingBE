@@ -7,7 +7,11 @@ import httpx
 from fastapi import HTTPException, status
 
 from app.schemas.capture import CaptureMeasurementResponse
-from app.schemas.recipe import DEFAULT_HEIGHT_CALC_MODE, HeightCalcMode
+from app.schemas.recipe import (
+    DEFAULT_HEIGHT_CALC_MODE,
+    DEFAULT_HEIGHT_PERCENTILE,
+    HeightCalcMode,
+)
 from app.services.sensor_service import read_temperature, read_weight
 from app.services.stream_capture_config_service import get_stream_capture_config_service
 
@@ -79,6 +83,7 @@ def capture_measurement(
     name: str,
     water_cut: bool,
     height_calc_mode: HeightCalcMode = DEFAULT_HEIGHT_CALC_MODE,
+    height_percentile: float = DEFAULT_HEIGHT_PERCENTILE,
     lw_height_mm: float = 0.0,
 ) -> CaptureMeasurementResponse:
     """读取传感器并调用 capture_2d_stream 的 POST /capture 接口。"""
@@ -98,6 +103,7 @@ def capture_measurement(
         "weight": weight_text,
         "water_cut": bool(water_cut),
         "height_calc_mode": height_calc_mode,
+        "height_percentile": float(height_percentile),
         "height_scale": stream_config.height_scale,
         "height_offset": stream_config.height_offset,
         "lw_height_mm": float(lw_height_mm),

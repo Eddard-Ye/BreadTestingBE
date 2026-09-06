@@ -59,9 +59,15 @@ def main() -> int:
     )
     parser.add_argument(
         "--height-calc-mode",
-        choices=("peak", "average"),
+        choices=("peak", "average", "percentile"),
         default="peak",
-        help="For capture, height calculation mode (peak or average).",
+        help="For capture, height calculation mode (peak, average, or percentile).",
+    )
+    parser.add_argument(
+        "--height-percentile",
+        type=float,
+        default=50.0,
+        help="For capture percentile mode, physical height percentile 0–100 (default 50).",
     )
     parser.add_argument(
         "--lw-height-mm",
@@ -92,6 +98,7 @@ def main() -> int:
                 "weight": args.weight,
                 "water_cut": bool(args.water_cut),
                 "height_calc_mode": args.height_calc_mode,
+                "height_percentile": float(args.height_percentile),
                 "lw_height_mm": float(args.lw_height_mm),
             },
         )
